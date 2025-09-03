@@ -14,7 +14,7 @@
  * - Logs detalhados de execução
  * - Tratamento robusto de erros
  * 
- * @author Sistema desenvolvido para SME - Secretaria Municipal de Educação
+ * @author Sistema desenvolvido para SMA - Secretaria Municipal de Administração lUANA 41331
  * @version 2.0 - Otimizada para Google Apps Script
  * ========================================================================
  */
