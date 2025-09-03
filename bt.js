@@ -12,7 +12,7 @@
  * - Preservação de dados existentes
  * - Interface responsiva com progresso
  * 
- * @author luana - 41331 / Assistente AI
+ * @author Sistema desenvolvido para SMA - Secretaria Municipal de Administração
  * @version 3.0 - Versão Otimizada
  * ========================================================================
  */
@@ -23,31 +23,33 @@
 
 /**
  * IDs das 23 planilhas das secretarias municipais
+ * ⚠️ IMPORTANTE: Substitua "Secretaria X" pelas siglas reais das secretarias
+ * Exemplo: "SMA", "SEMAD", "SECOM", etc.
  */
 const PLANILHAS_SECRETARIAS = [
-  { id: "1Z6rfDo09m2nUQIjjAS0S3iuweToHAtIXK9idRb-RzuA", nome: "SECOM" },
-  { id: "14W2ewZBf-MgoKUYewj7--FLjDC1lVL6-5EUpHTHDoqU", nome: "SEMEDES" },
-  { id: "15ztEc0wlK1mkrRd-DYkfXUn-Vq-k2JT0yLV-JaMeYV4", nome: "SEMOP" },
-  { id: "1u7L6Qh57zFqQRCPNTJLGGReuEBlykCnD65SwwNFeRNA", nome: "SEMUTRANS" },
-  { id: "1Nc9O1Ha038gKY5LcfxUVClhTq6rsR0zghdSJqfScI6k", nome: "SMA" },
-  { id: "1QrRoRoOsyrKgFIitAYWl1g53zYyxymWnoQCVBsRyHsM", nome: "SMAFEL" },
-  { id: "1rlyWJDE3srgUMyJy2eDlNrA4Sp57Njca9oypUkRSpP8", nome: "SMCC" },
-  { id: "1_4d9POGUbjKHHGPCcbQGx3-wLQuSmThKlLsFG98vDpw", nome: "SMCL" },
-  { id: "1n5JfTcpy8EtSlBY-bT3JLqV5kECrN_QeSM79TXbEZjk", nome: "SMCT" },
-  { id: "1giGaLo8jtOJ2VCSFcwhULFR5aYZcgPdifSfIKHXAm1A", nome: "SMDS" },
-  { id: "1WBOuLGg7hwFY7ehP1qKmuzN8-ZJR12GhMdYcNDCYHz0", nome: "SME" },
-  { id: "1cWASt4ldQbIEFm0XW1xPd7zJJZ9kNjGCylgc5XQIbPg", nome: "SMF" },
-  { id: "1n2UuXYvKzz1Dau32aFwVhHLWzt2brClbJ_CFcpVa3Ks", nome: "SMGAED" },
-  { id: "16SHJbhAb7XVmEhREFX_cVFeR2xtczizXjvpaUAwpFAk", nome: "SMH" },
-  { id: "1xIWtAH9P7HZzjzroFG01KhtvRmy-sKV1YxCCBmOBxJo", nome: "SMMAP" },
-  { id: "1qWSF0f7wVmJPM7Ht2_dtBPDBztt8PyyFwdL9rwwGTBM", nome: "SMMF" },
-  { id: "1eSp1C9K-AO2ZJr3ApFuDDlhGhsJXcvbxZZUn04VildM", nome: "SMNJ" },
-  { id: "1AhWPtTgLqF_VEBNM6HxcxxJl5bkaRG5MLHPIX3Pa-3Y", nome: "SMOP" },
-  { id: "1EObh9xVjRqrPY1Fdz_ji7Nzq-2lcHXZKJysF6SJf66w", nome: "SMOU" },
-  { id: "17dEVkFJNNGanitiJYnT7Lwqz3DWsz8qODZA0K7Quggs", nome: "SMS" },
-  { id: "1klqCbpMJVyCXTdpBkNrsrVfZozEOFWi1VT0xZjjSf8g", nome: "SMSD" },
-  { id: "1SjSlad1XQTPA0PqPUrpB7WMfPO0WxWV1f7SpHvhubrQ", nome: "SMSM" },
-  { id: "1LPaScCjVYVK6OVA5ZTeUXj3PXiM3nq_1GUdyiTru0jk", nome: "SMSU" }
+{ id: "1Z6rfDo09m2nUQIjjAS0S3iuweToHAtIXK9idRb-RzuA", nome: "SECOM" },
+{ id: "14W2ewZBf-MgoKUYewj7--FLjDC1lVL6-5EUpHTHDoqU", nome: "SEMEDES" },
+{ id: "15ztEc0wlK1mkrRd-DYkfXUn-Vq-k2JT0yLV-JaMeYV4", nome: "SEMOP" },
+{ id: "1u7L6Qh57zFqQRCPNTJLGGReuEBlykCnD65SwwNFeRNA", nome: "SEMUTRANS" },
+{ id: "1Nc9O1Ha038gKY5LcfxUVClhTq6rsR0zghdSJqfScI6k", nome: "SMA" },
+{ id: "1QrRoRoOsyrKgFIitAYWl1g53zYyxymWnoQCVBsRyHsM", nome: "SMAFEL" },
+{ id: "1rlyWJDE3srgUMyJy2eDlNrA4Sp57Njca9oypUkRSpP8", nome: "SMCC" },
+{ id: "1_4d9POGUbjKHHGPCcbQGx3-wLQuSmThKlLsFG98vDpw", nome: "SMCL" },
+{ id: "1n5JfTcpy8EtSlBY-bT3JLqV5kECrN_QeSM79TXbEZjk", nome: "SMCT" },
+{ id: "1giGaLo8jtOJ2VCSFcwhULFR5aYZcgPdifSfIKHXAm1A", nome: "SMDS" },
+{ id: "1WBOuLGg7hwFY7ehP1qKmuzN8-ZJR12GhMdYcNDCYHz0", nome: "SME" },
+{ id: "1cWASt4ldQbIEFm0XW1xPd7zJJZ9kNjGCylgc5XQIbPg", nome: "SMF" },
+{ id: "1n2UuXYvKzz1Dau32aFwVhHLWzt2brClbJ_CFcpVa3Ks", nome: "SMGAED" },
+{ id: "16SHJbhAb7XVmEhREFX_cVFeR2xtczizXjvpaUAwpFAk", nome: "SMH" },
+{ id: "1xIWtAH9P7HZzjzroFG01KhtvRmy-sKV1YxCCBmOBxJo", nome: "SMMAP" },
+{ id: "1qWSF0f7wVmJPM7Ht2_dtBPDBztt8PyyFwdL9rwwGTBM", nome: "SMMF" },
+{ id: "1eSp1C9K-AO2ZJr3ApFuDDlhGhsJXcvbxZZUn04VildM", nome: "SMNJ" },
+{ id: "1AhWPtTgLqF_VEBNM6HxcxxJl5bkaRG5MLHPIX3Pa-3Y", nome: "SMOP" },
+{ id: "1EObh9xVjRqrPY1Fdz_ji7Nzq-2lcHXZKJysF6SJf66w", nome: "SMOU" },
+{ id: "17dEVkFJNNGanitiJYnT7Lwqz3DWsz8qODZA0K7Quggs", nome: "SMS" },
+{ id: "1klqCbpMJVyCXTdpBkNrsrVfZozEOFWi1VT0xZjjSf8g", nome: "SMSD" },
+{ id: "1SjSlad1XQTPA0PqPUrpB7WMfPO0WxWV1f7SpHvhubrQ", nome: "SMSM" },
+{ id: "1LPaScCjVYVK6OVA5ZTeUXj3PXiM3nq_1GUdyiTru0jk", nome: "SMSU" }
 ];
 
 /**
@@ -347,32 +349,47 @@ function processarSecretariaOtimizada(secretaria) {
           };
       }
       
-      // Ler dados (colunas B-O, exceto M)
+      // ============================================================================
+      // MAPEAMENTO CORRETO DAS COLUNAS:
+      // B = # (ignorar) | C = Nome | D = Prontuário | E = Formação | F = Área 
+      // G = Cargo | H = CC/FE | I = Função | J = Readaptado | K = Justificativa 
+      // L = Ação | M = Condicionalidade | Q = Data Real da Transferência
+      // ============================================================================
+      
+      // Ler dados das colunas C até Q (índices 3 até 17 na planilha)
       const totalLinhas = ultimaLinha - CONFIG.LINHA_INICIO_DADOS;
-      const dadosRange = abaOrigem.getRange(CONFIG.LINHA_INICIO_DADOS + 1, 2, totalLinhas, 14);
+      const dadosRange = abaOrigem.getRange(
+          CONFIG.LINHA_INICIO_DADOS + 1, // Linha 5
+          3, // Coluna C (Nome)
+          totalLinhas, 
+          15 // Até coluna Q (C=3, D=4, E=5, F=6, G=7, H=8, I=9, J=10, K=11, L=12, M=13, N=14, O=15, P=16, Q=17)
+      );
+      
       const dadosBrutos = dadosRange.getValues();
       
       // Processar dados
       const dadosProcessados = [];
       
       dadosBrutos.forEach(linha => {
-          // Verificar se linha tem dados
-          if (linha.some(valor => valor && valor.toString().trim())) {
+          // Verificar se linha tem dados (verificar pelo menos nome)
+          if (linha[0] && linha[0].toString().trim()) { // linha[0] = Nome (coluna C)
               
+              // Mapear corretamente:
+              // linha[0] = Nome (C), linha[1] = Prontuário (D), linha[2] = Formação (E), etc.
               const linhaCentral = [
-                  siglaSecretaria,              // A - Secretaria
-                  (linha[0] || "").toString().trim(),   // B - Nome
-                  (linha[1] || "").toString().trim(),   // C - Prontuário  
-                  (linha[2] || "").toString().trim(),   // D - Formação Acadêmica
-                  (linha[3] || "").toString().trim(),   // E - Área de Formação
-                  (linha[4] || "").toString().trim(),   // F - Cargo Concurso
-                  (linha[5] || "").toString().trim(),   // G - CC / FE
-                  (linha[6] || "").toString().trim(),   // H - Função Gratificada
-                  (linha[7] || "").toString().trim(),   // I - Readaptado
-                  (linha[8] || "").toString().trim(),   // J - Justificativa
-                  (linha[9] || "").toString().trim(),   // K - Ação (o que)
-                  (linha[10] || "").toString().trim(),  // L - Condicionalidade
-                  (linha[13] || "").toString().trim()   // M - Data da Liberação (coluna O)
+                  siglaSecretaria,                           // A - Secretaria
+                  (linha[0] || "").toString().trim(),        // B - Nome (C)
+                  (linha[1] || "").toString().trim(),        // C - Prontuário (D)  
+                  (linha[2] || "").toString().trim(),        // D - Formação Acadêmica (E)
+                  (linha[3] || "").toString().trim(),        // E - Área de Formação (F)
+                  (linha[4] || "").toString().trim(),        // F - Cargo Concurso (G)
+                  (linha[5] || "").toString().trim(),        // G - CC / FE (H)
+                  (linha[6] || "").toString().trim(),        // H - Função Gratificada (I)
+                  (linha[7] || "").toString().trim(),        // I - Readaptado (J)
+                  (linha[8] || "").toString().trim(),        // J - Justificativa (K)
+                  (linha[9] || "").toString().trim(),        // K - Ação (o que) (L)
+                  (linha[10] || "").toString().trim(),       // L - Condicionalidade (M)
+                  (linha[14] || "").toString().trim()        // M - Data da Liberação (Q - Data Real da Transferência)
               ];
               
               dadosProcessados.push(linhaCentral);
