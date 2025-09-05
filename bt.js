@@ -76,7 +76,7 @@ const CABECALHOS_CENTRAL = [
     "Justificativa",       // J
     "Ação (o que)",        // K
     "Condicionalidade",    // L
-    "Data da Liberação"    // M
+    "Data da Inclusão"     // M
 ];
 
 // ========================================================================
@@ -220,9 +220,9 @@ function processarSecretariaOtimizada(secretaria) {
         // ============================================================================
         // MAPEAMENTO CORRETO DAS COLUNAS - CONFIRMADO:
         // DADOS COMEÇAM NA LINHA 5 (CONFIG.LINHA_INICIO_DADOS = 4)
-        // C = Nome | D = Prontuário | E = Formação | F = Área | G = Cargo 
-        // H = CC/FE | I = Função | J = Readaptado | K = Justificativa 
-        // L = Ação | M = Condicionalidade | Q = Data Real da Transferência
+        // B = Nome | C = Prontuário | D = Formação | E = Área | F = Cargo 
+        // G = CC/FE | H = Função | I = Readaptado | J = Justificativa 
+        // K = Ação | L = Condicionalidade | N = Data da Inclusão
         // ============================================================================
         
         // Calcular linhas de dados disponíveis
@@ -230,13 +230,13 @@ function processarSecretariaOtimizada(secretaria) {
         
         Logger.log(`📊 ${siglaSecretaria}: Linha ${CONFIG.LINHA_INICIO_DADOS + 1} até ${ultimaLinha} (${totalLinhas} linhas)`);
         
-        // Ler dados das colunas C até Q 
-        // C=3, D=4, E=5, F=6, G=7, H=8, I=9, J=10, K=11, L=12, M=13, [N=14, O=15, P=16], Q=17
+        // Ler dados das colunas B até N 
+        // B=2, C=3, D=4, E=5, F=6, G=7, H=8, I=9, J=10, K=11, L=12, M=13, N=14
         const dadosRange = abaOrigem.getRange(
             CONFIG.LINHA_INICIO_DADOS + 1, // Linha 5 (índice 4 + 1)
-            3, // Coluna C (Nome) = índice 3
+            2, // Coluna B (Nome) = índice 2
             totalLinhas, 
-            15 // Colunas C até Q (C=3 até Q=17 = 15 colunas)
+            13 // Colunas B até N (B=2 até N=14 = 13 colunas)
         );
         
         const dadosBrutos = dadosRange.getValues();
@@ -250,25 +250,25 @@ function processarSecretariaOtimizada(secretaria) {
             const linhaReal = CONFIG.LINHA_INICIO_DADOS + 1 + indiceLinhaArray;
             
             // Verificar se linha tem dados (verificar pelo menos nome)
-            const nome = (linha[0] || "").toString().trim(); // linha[0] = Nome (coluna C)
+            const nome = (linha[0] || "").toString().trim(); // linha[0] = Nome (coluna B)
             
             if (nome) { // Se tem nome, processar a linha
                 
                 // Mapear corretamente conforme especificação:
                 const linhaCentral = [
                     siglaSecretaria,                           // A - Secretaria (usar sigla do array)
-                    nome,                                      // B - Nome (C na origem, índice 0)
-                    (linha[1] || "").toString().trim(),        // C - Prontuário (D na origem, índice 1)  
-                    (linha[2] || "").toString().trim(),        // D - Formação Acadêmica (E na origem, índice 2)
-                    (linha[3] || "").toString().trim(),        // E - Área de Formação (F na origem, índice 3)
-                    (linha[4] || "").toString().trim(),        // F - Cargo Concurso (G na origem, índice 4)
-                    (linha[5] || "").toString().trim(),        // G - CC / FE (H na origem, índice 5)
-                    (linha[6] || "").toString().trim(),        // H - Função Gratificada (I na origem, índice 6)
-                    (linha[7] || "").toString().trim(),        // I - Readaptado (J na origem, índice 7)
-                    (linha[8] || "").toString().trim(),        // J - Justificativa (K na origem, índice 8)
-                    (linha[9] || "").toString().trim(),        // K - Ação (o que) (L na origem, índice 9)
-                    (linha[10] || "").toString().trim(),       // L - Condicionalidade (M na origem, índice 10)
-                    (linha[14] || "").toString().trim()        // M - Data da Liberação (Q na origem, índice 14)
+                    nome,                                      // B - Nome (B na origem, índice 0)
+                    (linha[1] || "").toString().trim(),        // C - Prontuário (C na origem, índice 1)  
+                    (linha[2] || "").toString().trim(),        // D - Formação Acadêmica (D na origem, índice 2)
+                    (linha[3] || "").toString().trim(),        // E - Área de Formação (E na origem, índice 3)
+                    (linha[4] || "").toString().trim(),        // F - Cargo Concurso (F na origem, índice 4)
+                    (linha[5] || "").toString().trim(),        // G - CC / FE (G na origem, índice 5)
+                    (linha[6] || "").toString().trim(),        // H - Função Gratificada (H na origem, índice 6)
+                    (linha[7] || "").toString().trim(),        // I - Readaptado (I na origem, índice 7)
+                    (linha[8] || "").toString().trim(),        // J - Justificativa (J na origem, índice 8)
+                    (linha[9] || "").toString().trim(),        // K - Ação (o que) (K na origem, índice 9)
+                    (linha[10] || "").toString().trim(),       // L - Condicionalidade (L na origem, índice 10)
+                    (linha[12] || "").toString().trim()        // M - Data da Inclusão (N na origem, índice 12)
                 ];
                 
                 dadosProcessados.push(linhaCentral);
@@ -394,7 +394,7 @@ function testeMapemantoColunas() {
 📊 Última linha: ${ultimaLinha}
 
 🔧 AJUSTE APLICADO:
-• Leitura dos dados começa na COLUNA B
+• Leitura dos dados começa na COLUNA B (Nome)
 • Ignora coluna A (pode ter numeração ou estar vazia)
 
 ✅ Verifique os logs do Apps Script para ver:
@@ -568,9 +568,9 @@ function mostrarInstrucoesCorrigidas() {
  *    ✅ Agora: ordena as secretarias ANTES do processamento
  * 
  * 3. 📊 MAPEAMENTO DE COLUNAS:
- *    ✅ Confirmado: C→B, D→C, E→D, F→E, G→F, H→G, I→H, J→I, K→J, L→K, M→L, Q→M
+ *    ✅ Confirmado: B→B, C→C, D→D, E→E, F→F, G→G, H→H, I→I, J→J, K→K, L→L, N→M
  *    ✅ Início dos dados: linha 5 (CONFIG.LINHA_INICIO_DADOS = 4)
- *    ✅ Data da Liberação: coluna Q (índice 14) da origem
+ *    ✅ Data da Inclusão: coluna N (índice 12) da origem
  * 
  * 4. 🧪 NOVAS FUNÇÕES DE TESTE:
  *    • testeMapemantoColunas() - verifica estrutura
@@ -780,7 +780,7 @@ function corrigirDadosExistentes() {
             // Reescrever dados ordenados
             abaCentral.getRange(2, 1, totalRegistros, CABECALHOS_CENTRAL.length).setValues(todosDados);
             
-            // Aplicar formatação
+            // Aplicar formatação brasileira
             aplicarFormatacaoOtimizada(abaCentral, totalLinhas);
             
             SpreadsheetApp.getUi().alert(
@@ -812,6 +812,7 @@ function criarMenuCompletoCorrigido() {
         .addItem("📊 Atualizar Secretaria Específica", "atualizarSecretariaEspecifica")
         .addItem("🔍 Verificar Dados Existentes", "verificarDadosExistentes")
         .addItem("🔧 Corrigir Dados Existentes", "corrigirDadosExistentes")
+        .addItem("🎨 Aplicar Formatação Brasileira", "aplicarFormatacaoBrasileira")
         .addSeparator()
         .addSubMenu(ui.createMenu("🧪 Testes e Debug")
             .addItem("🧪 Testar Mapeamento", "testeMapemantoColunas")
@@ -838,10 +839,11 @@ Programa Governo Eficaz - Santana de Parnaíba
 
 🔧 CORREÇÕES IMPLEMENTADAS:
 • ✅ Sigla das secretarias: usa array PLANILHAS_SECRETARIAS
-• ✅ Mapeamento correto: C→B, D→C, E→D, etc.
+• ✅ Mapeamento correto: B→B, C→C, D→D, etc.
 • ✅ Ordenação alfabética: antes do processamento
-• ✅ Data da Liberação: coluna Q corretamente mapeada
+• ✅ Data da Inclusão: coluna N corretamente mapeada
 • ✅ Início dos dados: linha 5 confirmada
+• ✅ Formatação brasileira: DD/MM/YY, Calibri 10, alinhamento centralizado
 
 🧪 FERRAMENTAS DE TESTE:
 • 🧪 Testar Mapeamento - verifica estrutura de colunas
@@ -856,26 +858,33 @@ Programa Governo Eficaz - Santana de Parnaíba
 • Logs detalhados para debug
 • Recuperação automática de erros
 
+🎨 FORMATAÇÃO BRASILEIRA:
+• Fonte: Calibri 10 em toda a planilha
+• Data: DD/MM/YY (formato brasileiro)
+• Alinhamento: centralizado vertical e horizontal
+• Larguras personalizadas: A(66), B(257), C(68), D(108), E(103), F(168), G(97), H(88), I(76), J(256), K(125), L(170), M(88)
+
 📊 MAPEAMENTO DE COLUNAS CONFIRMADO:
 Origem → Destino
-C (Nome) → B (Nome)
-D (Prontuário) → C (Prontuário) 
-E (Formação) → D (Formação)
-F (Área) → E (Área)
-G (Cargo) → F (Cargo)
-H (CC/FE) → G (CC/FE)
-I (Função) → H (Função)
-J (Readaptado) → I (Readaptado)
-K (Justificativa) → J (Justificativa)
-L (Ação) → K (Ação)
-M (Condicionalidade) → L (Condicionalidade)
-Q (Data Real) → M (Data da Liberação)
+B (Nome) → B (Nome)
+C (Prontuário) → C (Prontuário) 
+D (Formação) → D (Formação)
+E (Área) → E (Área)
+F (Cargo) → F (Cargo)
+G (CC/FE) → G (CC/FE)
+H (Função) → H (Função)
+I (Readaptado) → I (Readaptado)
+J (Justificativa) → J (Justificativa)
+K (Ação) → K (Ação)
+L (Condicionalidade) → L (Condicionalidade)
+N (Data da Inclusão) → M (Data da Inclusão)
 
 🎯 COMO USAR A VERSÃO CORRIGIDA:
 1. Execute "Testar Mapeamento" para verificar estrutura
 2. Use "Validar Estruturas" para testar conectividade
 3. Execute "Importar Dados" para processamento completo
-4. Use "Comparar Dados" para validar resultados
+4. Use "Aplicar Formatação Brasileira" para formatação personalizada
+5. Use "Comparar Dados" para validar resultados
 
 📞 SUPORTE TÉCNICO:
 📧 sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br
@@ -980,12 +989,15 @@ function prepararPlanilhaCentral() {
     const rangeCabecalho = abaCentral.getRange(1, 1, 1, CABECALHOS_CENTRAL.length);
     rangeCabecalho.setValues([CABECALHOS_CENTRAL]);
     
-    // Formatação do cabeçalho
+    // Formatação do cabeçalho com padrões brasileiros
     rangeCabecalho
         .setBackground("#1f4e79")
         .setFontColor("#ffffff")
         .setFontWeight("bold")
-        .setHorizontalAlignment("center");
+        .setFontFamily("Calibri")
+        .setFontSize(10)
+        .setHorizontalAlignment("center")
+        .setVerticalAlignment("middle");
     
     abaCentral.setFrozenRows(1);
     
@@ -1018,26 +1030,77 @@ ${loteAtual === totalLotes ? '🏁 Lote final - quase pronto!' : ''}
 }
 
 /**
-* Aplica formatação otimizada
+* Aplica formatação otimizada com padrões brasileiros
 */
 function aplicarFormatacaoOtimizada(abaCentral, totalLinhas) {
     if (totalLinhas <= 1) return;
     
     try {
-        // Ajustar largura das colunas
-        abaCentral.autoResizeColumns(1, CABECALHOS_CENTRAL.length);
+        Logger.log("🎨 Aplicando formatação brasileira...");
         
-        // Formatação básica dos dados
+        // ========================================================================
+        // CONFIGURAÇÕES DE LARGURA DAS COLUNAS (em pixels)
+        // ========================================================================
+        const largurasColunas = [66, 257, 68, 108, 103, 168, 97, 88, 76, 256, 125, 170, 88];
+        
+        // Aplicar larguras específicas
+        largurasColunas.forEach((largura, indice) => {
+            abaCentral.setColumnWidth(indice + 1, largura);
+        });
+        
+        // ========================================================================
+        // FORMATAÇÃO GERAL DA PLANILHA
+        // ========================================================================
+        
+        // Formatação do cabeçalho (linha 1)
+        const rangeCabecalho = abaCentral.getRange(1, 1, 1, CABECALHOS_CENTRAL.length);
+        rangeCabecalho
+            .setBackground("#1f4e79")
+            .setFontColor("#ffffff")
+            .setFontWeight("bold")
+            .setFontFamily("Calibri")
+            .setFontSize(10)
+            .setHorizontalAlignment("center")
+            .setVerticalAlignment("middle");
+        
+        // Formatação dos dados (linhas 2 em diante)
         const rangeDados = abaCentral.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length);
-        rangeDados.setVerticalAlignment("middle");
+        rangeDados
+            .setFontFamily("Calibri")
+            .setFontSize(10)
+            .setHorizontalAlignment("center")
+            .setVerticalAlignment("middle")
+            .setWrap(true);
         
-        // Destacar coluna de secretaria para facilitar visualização
+        // ========================================================================
+        // FORMATAÇÃO ESPECÍFICA DA COLUNA DE DATA (M)
+        // ========================================================================
+        const colunaData = abaCentral.getRange(2, 13, totalLinhas - 1, 1); // Coluna M
+        colunaData.setNumberFormat("dd/mm/yy"); // Formato brasileiro DD/MM/YY
+        
+        // ========================================================================
+        // DESTAQUE DA COLUNA SECRETARIA
+        // ========================================================================
         const colunaSecretaria = abaCentral.getRange(2, 1, totalLinhas - 1, 1);
         colunaSecretaria
             .setBackground("#e8f4fd")
             .setFontWeight("bold");
         
-        Logger.log("✅ Formatação aplicada");
+        // ========================================================================
+        // CONFIGURAÇÕES ADICIONAIS
+        // ========================================================================
+        
+        // Congelar primeira linha
+        abaCentral.setFrozenRows(1);
+        
+        // Ajustar altura das linhas para melhor visualização
+        const rangeTodasLinhas = abaCentral.getRange(1, 1, totalLinhas, CABECALHOS_CENTRAL.length);
+        rangeTodasLinhas.setRowHeight(25);
+        
+        Logger.log("✅ Formatação brasileira aplicada com sucesso!");
+        Logger.log(`📊 Colunas configuradas: ${largurasColunas.join(", ")} pixels`);
+        Logger.log("📅 Formato de data: DD/MM/YY (brasileiro)");
+        Logger.log("🔤 Fonte: Calibri 10");
         
     } catch (erro) {
         Logger.log("⚠️ Erro na formatação: " + erro.toString());
@@ -1341,14 +1404,17 @@ function limparEReiniciar() {
                     abaCentral.getRange(2, 1, ultimaLinha - 1, abaCentral.getLastColumn()).clearFormat();
                 }
                 
-                // Reconfigurar cabeçalhos
+                // Reconfigurar cabeçalhos com formatação brasileira
                 const rangeCabecalho = abaCentral.getRange(1, 1, 1, CABECALHOS_CENTRAL.length);
                 rangeCabecalho.setValues([CABECALHOS_CENTRAL]);
                 rangeCabecalho
                     .setBackground("#1f4e79")
                     .setFontColor("#ffffff")
                     .setFontWeight("bold")
-                    .setHorizontalAlignment("center");
+                    .setFontFamily("Calibri")
+                    .setFontSize(10)
+                    .setHorizontalAlignment("center")
+                    .setVerticalAlignment("middle");
             }
             
             SpreadsheetApp.getUi().alert(
@@ -1367,6 +1433,53 @@ function limparEReiniciar() {
                 SpreadsheetApp.getUi().ButtonSet.OK
             );
         }
+    }
+}
+
+/**
+* Aplicar formatação brasileira em planilha existente
+*/
+function aplicarFormatacaoBrasileira() {
+    try {
+        const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
+        const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
+        
+        if (!abaCentral) {
+            SpreadsheetApp.getUi().alert(
+                "ℹ️ Aba Não Encontrada",
+                "A aba central não foi encontrada.\nExecute a importação primeiro.",
+                SpreadsheetApp.getUi().ButtonSet.OK
+            );
+            return;
+        }
+        
+        const totalLinhas = abaCentral.getLastRow();
+        
+        if (totalLinhas <= 1) {
+            SpreadsheetApp.getUi().alert(
+                "ℹ️ Sem Dados",
+                "Não há dados para formatar.\nExecute a importação primeiro.",
+                SpreadsheetApp.getUi().ButtonSet.OK
+            );
+            return;
+        }
+        
+        // Aplicar formatação brasileira
+        aplicarFormatacaoOtimizada(abaCentral, totalLinhas);
+        
+        SpreadsheetApp.getUi().alert(
+            "✅ Formatação Aplicada",
+            `Formatação brasileira aplicada com sucesso!\n\n📊 ${totalLinhas - 1} registros formatados\n🔤 Fonte: Calibri 10\n📅 Data: DD/MM/YY\n📏 Colunas: larguras personalizadas`,
+            SpreadsheetApp.getUi().ButtonSet.OK
+        );
+        
+    } catch (erro) {
+        Logger.log(`❌ Erro na formatação: ${erro.toString()}`);
+        SpreadsheetApp.getUi().alert(
+            "❌ Erro na Formatação",
+            "Ocorreu um erro ao aplicar a formatação brasileira.",
+            SpreadsheetApp.getUi().ButtonSet.OK
+        );
     }
 }
 
