@@ -268,7 +268,7 @@ function processarSecretariaOtimizada(secretaria) {
                     (linha[8] || "").toString().trim(),        // J - Justificativa (J na origem, índice 8)
                     (linha[9] || "").toString().trim(),        // K - Ação (o que) (K na origem, índice 9)
                     (linha[10] || "").toString().trim(),       // L - Condicionalidade (L na origem, índice 10)
-                    (linha[12] || "").toString().trim()        // M - Data da Inclusão (N na origem, índice 12)
+                    formatarDataBrasileira(linha[12] || "")     // M - Data da Inclusão (N na origem, índice 12)
                 ];
                 
                 dadosProcessados.push(linhaCentral);
@@ -813,6 +813,7 @@ function criarMenuCompletoCorrigido() {
         .addItem("🔍 Verificar Dados Existentes", "verificarDadosExistentes")
         .addItem("🔧 Corrigir Dados Existentes", "corrigirDadosExistentes")
         .addItem("🎨 Aplicar Formatação Brasileira", "aplicarFormatacaoBrasileira")
+        .addItem("📅 Corrigir Formato de Datas", "corrigirFormatoDatas")
         .addSeparator()
         .addSubMenu(ui.createMenu("🧪 Testes e Debug")
             .addItem("🧪 Testar Mapeamento", "testeMapemantoColunas")
@@ -843,7 +844,7 @@ Programa Governo Eficaz - Santana de Parnaíba
 • ✅ Ordenação alfabética: antes do processamento
 • ✅ Data da Inclusão: coluna N corretamente mapeada
 • ✅ Início dos dados: linha 5 confirmada
-• ✅ Formatação brasileira: DD/MM/YY, Calibri 10, alinhamento centralizado
+• ✅ Formatação brasileira: DD/MM/YYYY, Calibri 10, cores alternadas, bordas, texto ajustado
 
 🧪 FERRAMENTAS DE TESTE:
 • 🧪 Testar Mapeamento - verifica estrutura de colunas
@@ -860,8 +861,11 @@ Programa Governo Eficaz - Santana de Parnaíba
 
 🎨 FORMATAÇÃO BRASILEIRA:
 • Fonte: Calibri 10 em toda a planilha
-• Data: DD/MM/YY (formato brasileiro)
+• Data: DD/MM/YYYY (formato brasileiro)
 • Alinhamento: centralizado vertical e horizontal
+• Texto: ajustado automaticamente
+• Cores alternadas: #ffffff (linhas pares) e #ebeff1 (linhas ímpares)
+• Bordas: todas as bordas, cor #ffffff, estilo SOLID_MEDIUM
 • Larguras personalizadas: A(66), B(257), C(68), D(108), E(103), F(168), G(97), H(88), I(76), J(256), K(125), L(170), M(88)
 
 📊 MAPEAMENTO DE COLUNAS CONFIRMADO:
@@ -1030,6 +1034,47 @@ ${loteAtual === totalLotes ? '🏁 Lote final - quase pronto!' : ''}
 }
 
 /**
+* Converte data para formato brasileiro DD/MM/YYYY
+*/
+function formatarDataBrasileira(data) {
+    if (!data || data === "" || data === null) {
+        return "";
+    }
+    
+    try {
+        // Se já é uma string no formato correto, retorna
+        if (typeof data === "string" && data.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+            return data;
+        }
+        
+        // Se é um objeto Date, converte
+        let dataObj;
+        if (data instanceof Date) {
+            dataObj = data;
+        } else {
+            // Tenta converter string para Date
+            dataObj = new Date(data);
+        }
+        
+        // Verifica se a data é válida
+        if (isNaN(dataObj.getTime())) {
+            return "";
+        }
+        
+        // Formata para DD/MM/YYYY
+        const dia = String(dataObj.getDate()).padStart(2, '0');
+        const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+        const ano = dataObj.getFullYear();
+        
+        return `${dia}/${mes}/${ano}`;
+        
+    } catch (erro) {
+        Logger.log(`⚠️ Erro ao formatar data: ${erro.toString()}`);
+        return "";
+    }
+}
+
+/**
 * Aplica formatação otimizada com padrões brasileiros
 */
 function aplicarFormatacaoOtimizada(abaCentral, totalLinhas) {
@@ -1070,13 +1115,25 @@ function aplicarFormatacaoOtimizada(abaCentral, totalLinhas) {
             .setFontSize(10)
             .setHorizontalAlignment("center")
             .setVerticalAlignment("middle")
-            .setWrap(true);
+            .setWrap(true)
+            .setTextStyle("normal");
         
         // ========================================================================
         // FORMATAÇÃO ESPECÍFICA DA COLUNA DE DATA (M)
         // ========================================================================
         const colunaData = abaCentral.getRange(2, 13, totalLinhas - 1, 1); // Coluna M
-        colunaData.setNumberFormat("dd/mm/yy"); // Formato brasileiro DD/MM/YY
+        colunaData.setNumberFormat("dd/mm/yyyy"); // Formato brasileiro DD/MM/YYYY
+        
+        // ========================================================================
+        // FORMATAÇÃO CONDICIONAL COM CORES ALTERNADAS
+        // ========================================================================
+        
+        // Aplicar cores alternadas nas linhas de dados
+        for (let i = 2; i <= totalLinhas; i++) {
+            const linha = abaCentral.getRange(i, 1, 1, CABECALHOS_CENTRAL.length);
+            const corFundo = (i % 2 === 0) ? "#ffffff" : "#ebeff1";
+            linha.setBackground(corFundo);
+        }
         
         // ========================================================================
         // DESTAQUE DA COLUNA SECRETARIA
@@ -1085,6 +1142,18 @@ function aplicarFormatacaoOtimizada(abaCentral, totalLinhas) {
         colunaSecretaria
             .setBackground("#e8f4fd")
             .setFontWeight("bold");
+        
+        // ========================================================================
+        // BORDAS E ESTILO
+        // ========================================================================
+        
+        // Aplicar bordas em toda a planilha
+        const rangeCompleto = abaCentral.getRange(1, 1, totalLinhas, CABECALHOS_CENTRAL.length);
+        rangeCompleto.setBorder(
+            true, true, true, true, true, true, // todas as bordas
+            "#ffffff", // cor da borda
+            SpreadsheetApp.BorderStyle.SOLID_MEDIUM // estilo: fino e depois um pouco mais grosso
+        );
         
         // ========================================================================
         // CONFIGURAÇÕES ADICIONAIS
@@ -1099,8 +1168,11 @@ function aplicarFormatacaoOtimizada(abaCentral, totalLinhas) {
         
         Logger.log("✅ Formatação brasileira aplicada com sucesso!");
         Logger.log(`📊 Colunas configuradas: ${largurasColunas.join(", ")} pixels`);
-        Logger.log("📅 Formato de data: DD/MM/YY (brasileiro)");
+        Logger.log("📅 Formato de data: DD/MM/YYYY (brasileiro)");
         Logger.log("🔤 Fonte: Calibri 10");
+        Logger.log("🎨 Cores alternadas: #ffffff e #ebeff1");
+        Logger.log("🔲 Bordas: todas as bordas, cor #ffffff, estilo SOLID_MEDIUM");
+        Logger.log("📝 Texto: ajustado automaticamente");
         
     } catch (erro) {
         Logger.log("⚠️ Erro na formatação: " + erro.toString());
@@ -1437,6 +1509,66 @@ function limparEReiniciar() {
 }
 
 /**
+* Corrigir formato de datas em planilha existente
+*/
+function corrigirFormatoDatas() {
+    try {
+        const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
+        const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
+        
+        if (!abaCentral) {
+            SpreadsheetApp.getUi().alert(
+                "ℹ️ Aba Não Encontrada",
+                "A aba central não foi encontrada.\nExecute a importação primeiro.",
+                SpreadsheetApp.getUi().ButtonSet.OK
+            );
+            return;
+        }
+        
+        const totalLinhas = abaCentral.getLastRow();
+        
+        if (totalLinhas <= 1) {
+            SpreadsheetApp.getUi().alert(
+                "ℹ️ Sem Dados",
+                "Não há dados para corrigir.\nExecute a importação primeiro.",
+                SpreadsheetApp.getUi().ButtonSet.OK
+            );
+            return;
+        }
+        
+        // Ler dados da coluna M (Data da Inclusão)
+        const colunaData = abaCentral.getRange(2, 13, totalLinhas - 1, 1);
+        const dadosData = colunaData.getValues();
+        
+        // Converter cada data para formato brasileiro
+        const datasCorrigidas = dadosData.map(linha => {
+            const dataOriginal = linha[0];
+            return [formatarDataBrasileira(dataOriginal)];
+        });
+        
+        // Aplicar as datas corrigidas
+        colunaData.setValues(datasCorrigidas);
+        
+        // Aplicar formatação de data
+        colunaData.setNumberFormat("dd/mm/yyyy");
+        
+        SpreadsheetApp.getUi().alert(
+            "✅ Datas Corrigidas",
+            `Formato de datas corrigido com sucesso!\n\n📊 ${totalLinhas - 1} registros processados\n📅 Formato: DD/MM/YYYY (brasileiro)`,
+            SpreadsheetApp.getUi().ButtonSet.OK
+        );
+        
+    } catch (erro) {
+        Logger.log(`❌ Erro na correção de datas: ${erro.toString()}`);
+        SpreadsheetApp.getUi().alert(
+            "❌ Erro na Correção",
+            "Ocorreu um erro ao corrigir o formato das datas.",
+            SpreadsheetApp.getUi().ButtonSet.OK
+        );
+    }
+}
+
+/**
 * Aplicar formatação brasileira em planilha existente
 */
 function aplicarFormatacaoBrasileira() {
@@ -1469,7 +1601,7 @@ function aplicarFormatacaoBrasileira() {
         
         SpreadsheetApp.getUi().alert(
             "✅ Formatação Aplicada",
-            `Formatação brasileira aplicada com sucesso!\n\n📊 ${totalLinhas - 1} registros formatados\n🔤 Fonte: Calibri 10\n📅 Data: DD/MM/YY\n📏 Colunas: larguras personalizadas`,
+            `Formatação brasileira aplicada com sucesso!\n\n📊 ${totalLinhas - 1} registros formatados\n🔤 Fonte: Calibri 10\n📅 Data: DD/MM/YYYY\n📝 Texto: ajustado automaticamente\n🎨 Cores alternadas: #ffffff e #ebeff1\n🔲 Bordas: todas as bordas, cor #ffffff\n📏 Colunas: larguras personalizadas`,
             SpreadsheetApp.getUi().ButtonSet.OK
         );
         
