@@ -77,7 +77,8 @@ const CABECALHOS_CENTRAL = [
     "Ação (o que)",        // K
     "Condicionalidade",    // L
     "Data da Inclusão",     // M
-    "Interesse do Servidor", // N (R na origem, índice 16)
+    "Status da Movimentação", // N
+    "Interesse do Servidor", // O (R na origem, índice 16)
 ];
 
 // ========================================================================
@@ -223,7 +224,7 @@ function processarSecretariaOtimizada(secretaria) {
         // DADOS COMEÇAM NA LINHA 5 (CONFIG.LINHA_INICIO_DADOS = 4)
         // B = Nome | C = Prontuário | D = Formação | E = Área | F = Cargo 
         // G = CC/FE | H = Função | I = Readaptado | J = Justificativa 
-        // K = Ação | L = Condicionalidade | M = Data da Inclusão | N = Interesse do Servidor
+        // K = Ação | L = Condicionalidade | M = Data da Inclusão | N = Status da Movimentação | O = Interesse do Servidor
         // ============================================================================
         
         // Calcular linhas de dados disponíveis
@@ -231,13 +232,13 @@ function processarSecretariaOtimizada(secretaria) {
         
         Logger.log(`📊 ${siglaSecretaria}: Linha ${CONFIG.LINHA_INICIO_DADOS + 1} até ${ultimaLinha} (${totalLinhas} linhas)`);
         
-        // Ler dados das colunas B até N 
-        // B=2, C=3, D=4, E=5, F=6, G=7, H=8, I=9, J=10, K=11, L=12, M=13, N=14
+        // Ler dados das colunas B até O 
+        // B=2, C=3, D=4, E=5, F=6, G=7, H=8, I=9, J=10, K=11, L=12, M=13, N=14, O=15
         const dadosRange = abaOrigem.getRange(
             CONFIG.LINHA_INICIO_DADOS + 1, // Linha 5 (índice 4 + 1)
             2, // Coluna B (Nome) = índice 2
             totalLinhas, 
-            14 // Colunas B até N (B=2 até N=14 = 14 colunas)
+            15 // Colunas B até O (B=2 até O=15 = 15 colunas)
         );
         
         const dadosBrutos = dadosRange.getValues();
@@ -270,7 +271,8 @@ function processarSecretariaOtimizada(secretaria) {
                     (linha[9] || "").toString().trim(),        // K - Ação (o que) (K na origem, índice 9)
                     (linha[10] || "").toString().trim(),       // L - Condicionalidade (L na origem, índice 10)
                     formatarDataBrasileira(linha[12] || ""),    // M - Data da Inclusão (M na origem, índice 12)
-                    (linha[16] || "").toString().trim()       //N - Interesse do Servidor (R na origem, índice 17)
+                    (linha[15] || "").toString().trim(),       //N - Status da Movimentação (Q na origem, índice 15)
+                    (linha[16] || "").toString().trim(),       //O - Interesse do Servidor (R na origem, índice 17)
                 ];
             
                 dadosProcessados.push(linhaCentral);
