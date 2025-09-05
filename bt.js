@@ -1323,116 +1323,81 @@ function verificarDadosExistentes() {
 * Gera relatório completo do sistema
 */
 function gerarRelatorioCompleto() {
-    try {
-        const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
-        const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
-        
-        if (!abaCentral || abaCentral.getLastRow() <= 1) {
-            SpreadsheetApp.getUi().alert(
-                "ℹ️ Relatório Não Disponível",
-                "Execute a importação de dados primeiro.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-            return;
-        }
-        
-        const totalLinhas = abaCentral.getLastRow();
-        const totalRegistros = totalLinhas - 1;
-        
-        // Análise detalhada
-        const todosOsDados = abaCentral.getRange(2, 1, totalRegistros, CABECALHOS_CENTRAL.length).getValues();
-        
-        const analise = {
-            secretarias: {},
-            camposVazios: {},
-            estatisticas: {
-                comNome: 0,
-                comProntuario: 0,
-                comFormacao: 0,
-                readaptados: 0
-            }
-        };
-        
-        // Processar cada registro
-        todosOsDados.forEach(linha => {
-            const secretaria = linha[0] || "NÃO IDENTIFICADA";
-            const nome = linha[1] || "";
-            const prontuario = linha[2] || "";
-            const formacao = linha[3] || "";
-            const readaptado = linha[8] || "";
-            
-            // Contar por secretaria
-            analise.secretarias[secretaria] = (analise.secretarias[secretaria] || 0) + 1;
-            
-            // Estatísticas de preenchimento
-            if (nome.toString().trim()) analise.estatisticas.comNome++;
-            if (prontuario.toString().trim()) analise.estatisticas.comProntuario++;
-            if (formacao.toString().trim()) analise.estatisticas.comFormacao++;
-            if (readaptado.toString().trim().toLowerCase().includes('sim')) analise.estatisticas.readaptados++;
-            
-            // Campos vazios por coluna
-            CABECALHOS_CENTRAL.forEach((cabecalho, indice) => {
-                if (!linha[indice] || !linha[indice].toString().trim()) {
-                    analise.camposVazios[cabecalho] = (analise.camposVazios[cabecalho] || 0) + 1;
-                }
-            });
-        });
-        
-        // Montar relatório
-        const secretariasOrdenadas = Object.entries(analise.secretarias)
-            .sort((a, b) => b[1] - a[1]); // Ordenar por quantidade (maior primeiro)
-        
-        let relatorioCompleto = `
-📊 RELATÓRIO COMPLETO DO SISTEMA
-
-📈 ESTATÍSTICAS GERAIS:
-• Total de registros: ${totalRegistros}
-• Secretarias ativas: ${Object.keys(analise.secretarias).length}
-• Registros com nome: ${analise.estatisticas.comNome} (${Math.round(analise.estatisticas.comNome/totalRegistros*100)}%)
-• Registros com prontuário: ${analise.estatisticas.comProntuario} (${Math.round(analise.estatisticas.comProntuario/totalRegistros*100)}%)
-• Servidores readaptados: ${analise.estatisticas.readaptados}
-
-🏢 RANKING DE SECRETARIAS (por quantidade de registros):
-`;
-        
-        secretariasOrdenadas.forEach(([secretaria, quantidade], indice) => {
-            const porcentagem = Math.round(quantidade/totalRegistros*100);
-            relatorioCompleto += `${indice + 1}. ${secretaria}: ${quantidade} (${porcentagem}%)\n`;
-        });
-        
-        relatorioCompleto += `
-📊 QUALIDADE DOS DADOS (campos com maior índice de preenchimento):
-`;
-        
-        const camposOrdenados = Object.entries(analise.camposVazios)
-            .sort((a, b) => a[1] - b[1]) // Menos vazios primeiro
-            .slice(0, 5);
-        
-        camposOrdenados.forEach(([campo, vazios]) => {
-            const preenchidos = totalRegistros - vazios;
-            const porcentagem = Math.round(preenchidos/totalRegistros*100);
-            relatorioCompleto += `• ${campo}: ${porcentagem}% preenchido\n`;
-        });
-        
-        relatorioCompleto += `
-📅 Relatório gerado em: ${new Date().toLocaleString('pt-BR')}
-🔄 Para dados atualizados, execute nova importação
-        `;
-        
-        SpreadsheetApp.getUi().alert(
-            "📊 Relatório Completo",
-            relatorioCompleto,
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-        
-    } catch (erro) {
-        Logger.log(`❌ Erro no relatório: ${erro.toString()}`);
-        SpreadsheetApp.getUi().alert(
-            "❌ Erro no Relatório",
-            "Ocorreu um erro ao gerar o relatório completo.",
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
+  try {
+    const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
+    const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
+    
+    if (!abaCentral || abaCentral.getLastRow() <= 1) {
+      SpreadsheetApp.getUi().alert(
+        "ℹ️ Relatório Não Disponível",
+        "Execute a importação de dados primeiro.",
+        SpreadsheetApp.getUi().ButtonSet.OK
+      );
+      return;
     }
+    
+    const totalLinhas = abaCentral.getLastRow();
+    const totalRegistros = totalLinhas - 1;
+    
+    // Pega todos os registros da planilha central
+    const todosOsDados = abaCentral.getRange(2, 1, totalRegistros, CABECALHOS_CENTRAL.length).getValues();
+    
+    let totalLiberacaoImediata = 0;
+    let readaptados = 0;
+    let emComissao = 0;
+    const secretarias = {};
+    
+    todosOsDados.forEach(linha => {
+      const secretaria = linha[0] || "NÃO IDENTIFICADA";
+      const readaptado = (linha[8] || "").toString().toLowerCase();
+      const ccfe = (linha[6] || "").toString().trim();
+      const status = (linha[13] || "").toString().toLowerCase(); // Status da Movimentação (coluna N)
+      
+      // Conta secretarias
+      secretarias[secretaria] = true;
+      
+      // Conta readaptados
+      if (readaptado.includes("sim")) {
+        readaptados++;
+      }
+      
+      // Conta CC/FE
+      if (ccfe) {
+        emComissao++;
+      }
+      
+      // Conta Liberação Imediata
+      if (status.includes("liberação imediata")) {
+        totalLiberacaoImediata++;
+      }
+    });
+    
+    const relatorio = `
+📊 RELATÓRIO SIMPLIFICADO
+
+• Total de registros: ${totalRegistros}
+• Secretarias ativas: ${Object.keys(secretarias).length}
+• Liberação imediata: ${totalLiberacaoImediata}
+• Readaptados: ${readaptados}
+• Em comissão (CC/FE): ${emComissao}
+
+📅 Gerado em: ${new Date().toLocaleString('pt-BR')}
+    `;
+    
+    SpreadsheetApp.getUi().alert(
+      "📊 Relatório Simplificado",
+      relatorio,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    
+  } catch (erro) {
+    Logger.log(`❌ Erro no relatório: ${erro.toString()}`);
+    SpreadsheetApp.getUi().alert(
+      "❌ Erro no Relatório",
+      "Ocorreu um erro ao gerar o relatório.",
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  }
 }
 
 /**
