@@ -76,7 +76,8 @@ const CABECALHOS_CENTRAL = [
     "Justificativa",       // J
     "Ação (o que)",        // K
     "Condicionalidade",    // L
-    "Data da Inclusão"     // M
+    "Data da Inclusão",     // M
+    "Interesse do Servidor", // N (R na origem, índice 16)
 ];
 
 // ========================================================================
@@ -222,7 +223,7 @@ function processarSecretariaOtimizada(secretaria) {
         // DADOS COMEÇAM NA LINHA 5 (CONFIG.LINHA_INICIO_DADOS = 4)
         // B = Nome | C = Prontuário | D = Formação | E = Área | F = Cargo 
         // G = CC/FE | H = Função | I = Readaptado | J = Justificativa 
-        // K = Ação | L = Condicionalidade | N = Data da Inclusão
+        // K = Ação | L = Condicionalidade | M = Data da Inclusão | N = Interesse do Servidor
         // ============================================================================
         
         // Calcular linhas de dados disponíveis
@@ -236,7 +237,7 @@ function processarSecretariaOtimizada(secretaria) {
             CONFIG.LINHA_INICIO_DADOS + 1, // Linha 5 (índice 4 + 1)
             2, // Coluna B (Nome) = índice 2
             totalLinhas, 
-            13 // Colunas B até N (B=2 até N=14 = 13 colunas)
+            14 // Colunas B até N (B=2 até N=14 = 14 colunas)
         );
         
         const dadosBrutos = dadosRange.getValues();
@@ -268,9 +269,10 @@ function processarSecretariaOtimizada(secretaria) {
                     (linha[8] || "").toString().trim(),        // J - Justificativa (J na origem, índice 8)
                     (linha[9] || "").toString().trim(),        // K - Ação (o que) (K na origem, índice 9)
                     (linha[10] || "").toString().trim(),       // L - Condicionalidade (L na origem, índice 10)
-                    formatarDataBrasileira(linha[12] || "")     // M - Data da Inclusão (N na origem, índice 12)
+                    formatarDataBrasileira(linha[12] || ""),    // M - Data da Inclusão (M na origem, índice 12)
+                    (linha[16] || "").toString().trim()       //N - Interesse do Servidor (R na origem, índice 17)
                 ];
-                
+            
                 dadosProcessados.push(linhaCentral);
                 
                 // Log detalhado para primeira linha de cada secretaria (debug)
@@ -279,7 +281,7 @@ function processarSecretariaOtimizada(secretaria) {
                 }
             }
         });
-        
+
         Logger.log(`✅ ${siglaSecretaria}: ${dadosProcessados.length} registros processados`);
         
         return {
@@ -481,27 +483,31 @@ function validarEstruturaSecretarias() {
 * Cria menu com opções de teste
 */
 function criarMenuPersonalizadoCorrigido() {
-    const ui = SpreadsheetApp.getUi();
-    
-    ui.createMenu("🏛️ Banco de Talentos v3.1")
-        .addItem("🔄 Importar Dados", "iniciarImportacaoManual")
-        .addSeparator()
-        .addItem("📊 Atualizar Secretaria Específica", "atualizarSecretariaEspecifica")
-        .addItem("🔍 Verificar Dados Existentes", "verificarDadosExistentes")
-        .addSeparator()
-        .addSubMenu(ui.createMenu("🧪 Testes e Debug")
-            .addItem("🧪 Testar Mapeamento", "testeMapemantoColunas")
-            .addItem("🔍 Validar Estruturas", "validarEstruturaSecretarias")
-            .addItem("🔤 Listar Secretarias Ordenadas", "listarSecretariasOrdenadas")
-            .addItem("🧹 Limpar Logs", "limparLogs"))
-        .addSeparator()
-        .addItem("📈 Relatório Completo", "gerarRelatorioCompleto")
-        .addItem("🧹 Limpar e Reiniciar", "limparEReiniciar")
-        .addSeparator()
-        .addItem("ℹ️ Sobre o Sistema", "exibirSobre")
-        .addToUi();
+  const ui = SpreadsheetApp.getUi();
+  
+  ui.createMenu("🏛️ Banco de Talentos v3.1")
+    .addItem("🔄 Importar Dados", "iniciarImportacaoManual")
+    .addSeparator()
+    .addItem("📊 Atualizar Secretaria Específica", "atualizarSecretariaEspecifica")
+    .addSeparator()
+    .addSubMenu(ui.createMenu("🧪 Testes e Debug")
+        .addItem("🧪 Testar Mapeamento", "testeMapemantoColunas")
+        .addItem("🔍 Validar Estruturas", "validarEstruturaSecretarias")
+        .addItem("🔤 Listar Secretarias Ordenadas", "listarSecretariasOrdenadas")
+        .addItem("🧹 Limpar Logs", "limparLogs"))
+    .addSeparator()
+    .addSubMenu(ui.createMenu("🎨 Personalização")
+        .addItem("🎨 Aplicar Formatação Brasileira", "aplicarFormatacaoBrasileira")
+        .addItem("📅 Corrigir Formato de Datas", "corrigirFormatoDatas")
+        .addItem("🔲 Aplicar Cores e Bordas", "aplicarCoresEBordas")
+        .addItem("📝 Ajustar Texto", "aplicarAjusteTexto"))
+    .addSeparator()
+    .addItem("📈 Relatório Completo", "gerarRelatorioCompleto")
+    .addItem("🧹 Limpar e Reiniciar", "limparEReiniciar")
+    .addSeparator()
+    .addItem("ℹ️ Sobre o Sistema", "exibirSobre")
+    .addToUi();
 }
-
 // ========================================================================
 // INICIALIZAÇÃO CORRIGIDA
 // ========================================================================
@@ -1003,7 +1009,9 @@ function prepararPlanilhaCentral() {
         .setFontFamily("Calibri")
         .setFontSize(10)
         .setHorizontalAlignment("center")
-        .setVerticalAlignment("middle");
+        .setVerticalAlignment("middle")
+        .setWrap(true)
+        .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
     
     abaCentral.setFrozenRows(1);
     
