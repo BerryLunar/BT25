@@ -814,6 +814,8 @@ function criarMenuCompletoCorrigido() {
         .addItem("🔧 Corrigir Dados Existentes", "corrigirDadosExistentes")
         .addItem("🎨 Aplicar Formatação Brasileira", "aplicarFormatacaoBrasileira")
         .addItem("📅 Corrigir Formato de Datas", "corrigirFormatoDatas")
+        .addItem("🔲 Aplicar Cores e Bordas", "aplicarCoresEBordas")
+        .addItem("📝 Aplicar Ajuste de Texto", "aplicarAjusteTexto")
         .addSeparator()
         .addSubMenu(ui.createMenu("🧪 Testes e Debug")
             .addItem("🧪 Testar Mapeamento", "testeMapemantoColunas")
@@ -863,7 +865,7 @@ Programa Governo Eficaz - Santana de Parnaíba
 • Fonte: Calibri 10 em toda a planilha
 • Data: DD/MM/YYYY (formato brasileiro)
 • Alinhamento: centralizado vertical e horizontal
-• Texto: ajustado automaticamente
+• Texto: quebra de linha ativada, altura ajustada automaticamente
 • Cores alternadas: #ffffff (linhas pares) e #ebeff1 (linhas ímpares)
 • Bordas: todas as bordas, cor #ffffff, estilo SOLID_MEDIUM
 • Larguras personalizadas: A(66), B(257), C(68), D(108), E(103), F(168), G(97), H(88), I(76), J(256), K(125), L(170), M(88)
@@ -1116,7 +1118,7 @@ function aplicarFormatacaoOtimizada(abaCentral, totalLinhas) {
             .setHorizontalAlignment("center")
             .setVerticalAlignment("middle")
             .setWrap(true)
-            .setTextStyle("normal");
+            .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
         
         // ========================================================================
         // FORMATAÇÃO ESPECÍFICA DA COLUNA DE DATA (M)
@@ -1125,35 +1127,11 @@ function aplicarFormatacaoOtimizada(abaCentral, totalLinhas) {
         colunaData.setNumberFormat("dd/mm/yyyy"); // Formato brasileiro DD/MM/YYYY
         
         // ========================================================================
-        // FORMATAÇÃO CONDICIONAL COM CORES ALTERNADAS
+        // FORMATAÇÃO CONDICIONAL E BORDAS
         // ========================================================================
         
-        // Aplicar cores alternadas nas linhas de dados
-        for (let i = 2; i <= totalLinhas; i++) {
-            const linha = abaCentral.getRange(i, 1, 1, CABECALHOS_CENTRAL.length);
-            const corFundo = (i % 2 === 0) ? "#ffffff" : "#ebeff1";
-            linha.setBackground(corFundo);
-        }
-        
-        // ========================================================================
-        // DESTAQUE DA COLUNA SECRETARIA
-        // ========================================================================
-        const colunaSecretaria = abaCentral.getRange(2, 1, totalLinhas - 1, 1);
-        colunaSecretaria
-            .setBackground("#e8f4fd")
-            .setFontWeight("bold");
-        
-        // ========================================================================
-        // BORDAS E ESTILO
-        // ========================================================================
-        
-        // Aplicar bordas em toda a planilha
-        const rangeCompleto = abaCentral.getRange(1, 1, totalLinhas, CABECALHOS_CENTRAL.length);
-        rangeCompleto.setBorder(
-            true, true, true, true, true, true, // todas as bordas
-            "#ffffff", // cor da borda
-            SpreadsheetApp.BorderStyle.SOLID_MEDIUM // estilo: fino e depois um pouco mais grosso
-        );
+        // Aplicar formatação condicional e bordas usando função auxiliar
+        aplicarFormatacaoCondicionalEBordas(abaCentral, totalLinhas);
         
         // ========================================================================
         // CONFIGURAÇÕES ADICIONAIS
@@ -1162,9 +1140,13 @@ function aplicarFormatacaoOtimizada(abaCentral, totalLinhas) {
         // Congelar primeira linha
         abaCentral.setFrozenRows(1);
         
-        // Ajustar altura das linhas para melhor visualização
-        const rangeTodasLinhas = abaCentral.getRange(1, 1, totalLinhas, CABECALHOS_CENTRAL.length);
-        rangeTodasLinhas.setRowHeight(25);
+        // Ajustar altura das linhas automaticamente
+        for (let i = 2; i <= totalLinhas; i++) {
+            abaCentral.autoResizeRows(i);
+        }
+        
+        // Manter altura fixa para o cabeçalho
+        abaCentral.setRowHeight(1, 25);
         
         Logger.log("✅ Formatação brasileira aplicada com sucesso!");
         Logger.log(`📊 Colunas configuradas: ${largurasColunas.join(", ")} pixels`);
@@ -1172,7 +1154,7 @@ function aplicarFormatacaoOtimizada(abaCentral, totalLinhas) {
         Logger.log("🔤 Fonte: Calibri 10");
         Logger.log("🎨 Cores alternadas: #ffffff e #ebeff1");
         Logger.log("🔲 Bordas: todas as bordas, cor #ffffff, estilo SOLID_MEDIUM");
-        Logger.log("📝 Texto: ajustado automaticamente");
+        Logger.log("📝 Texto: quebra de linha ativada, altura ajustada automaticamente");
         
     } catch (erro) {
         Logger.log("⚠️ Erro na formatação: " + erro.toString());
@@ -1563,6 +1545,163 @@ function corrigirFormatoDatas() {
         SpreadsheetApp.getUi().alert(
             "❌ Erro na Correção",
             "Ocorreu um erro ao corrigir o formato das datas.",
+            SpreadsheetApp.getUi().ButtonSet.OK
+        );
+    }
+}
+
+/**
+* Aplicar formatação condicional e bordas (função auxiliar)
+*/
+function aplicarFormatacaoCondicionalEBordas(abaCentral, totalLinhas) {
+    try {
+        Logger.log("🎨 Aplicando formatação condicional e bordas...");
+        
+        // ========================================================================
+        // FORMATAÇÃO CONDICIONAL COM CORES ALTERNADAS
+        // ========================================================================
+        
+        // Aplicar cores alternadas nas linhas de dados
+        for (let i = 2; i <= totalLinhas; i++) {
+            const linha = abaCentral.getRange(i, 1, 1, CABECALHOS_CENTRAL.length);
+            const corFundo = (i % 2 === 0) ? "#ffffff" : "#ebeff1";
+            linha.setBackground(corFundo);
+        }
+        
+        // Garantir que a coluna secretaria mantenha sua cor especial
+        const colunaSecretaria = abaCentral.getRange(2, 1, totalLinhas - 1, 1);
+        colunaSecretaria.setBackground("#e8f4fd");
+        colunaSecretaria.setFontWeight("bold");
+        
+        // ========================================================================
+        // BORDAS E ESTILO
+        // ========================================================================
+        
+        // Aplicar bordas em toda a planilha
+        const rangeCompleto = abaCentral.getRange(1, 1, totalLinhas, CABECALHOS_CENTRAL.length);
+        
+        // Aplicar bordas externas
+        rangeCompleto.setBorder(
+            true, true, true, true, false, false, // bordas externas
+            "#ffffff", // cor da borda
+            SpreadsheetApp.BorderStyle.SOLID_MEDIUM // estilo
+        );
+        
+        // Aplicar bordas internas (grade)
+        rangeCompleto.setBorder(
+            false, false, false, false, true, true, // bordas internas
+            "#ffffff", // cor da borda
+            SpreadsheetApp.BorderStyle.SOLID // estilo mais fino para grade
+        );
+        
+        Logger.log("✅ Formatação condicional e bordas aplicadas!");
+        
+    } catch (erro) {
+        Logger.log("⚠️ Erro na formatação condicional: " + erro.toString());
+    }
+}
+
+/**
+* Aplicar ajuste de texto e quebra de linha
+*/
+function aplicarAjusteTexto() {
+    try {
+        const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
+        const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
+        
+        if (!abaCentral) {
+            SpreadsheetApp.getUi().alert(
+                "ℹ️ Aba Não Encontrada",
+                "A aba central não foi encontrada.\nExecute a importação primeiro.",
+                SpreadsheetApp.getUi().ButtonSet.OK
+            );
+            return;
+        }
+        
+        const totalLinhas = abaCentral.getLastRow();
+        
+        if (totalLinhas <= 1) {
+            SpreadsheetApp.getUi().alert(
+                "ℹ️ Sem Dados",
+                "Não há dados para formatar.\nExecute a importação primeiro.",
+                SpreadsheetApp.getUi().ButtonSet.OK
+            );
+            return;
+        }
+        
+        Logger.log("📝 Aplicando ajuste de texto e quebra de linha...");
+        
+        // Formatação dos dados (linhas 2 em diante)
+        const rangeDados = abaCentral.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length);
+        rangeDados
+            .setWrap(true)
+            .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP)
+            .setHorizontalAlignment("center")
+            .setVerticalAlignment("middle");
+        
+        // Ajustar altura das linhas automaticamente
+        for (let i = 2; i <= totalLinhas; i++) {
+            abaCentral.autoResizeRows(i);
+        }
+        
+        SpreadsheetApp.getUi().alert(
+            "✅ Ajuste de Texto Aplicado",
+            `Ajuste de texto e quebra de linha aplicados com sucesso!\n\n📊 ${totalLinhas - 1} registros formatados\n📝 Quebra de linha: ativada\n📏 Altura das linhas: ajustada automaticamente`,
+            SpreadsheetApp.getUi().ButtonSet.OK
+        );
+        
+    } catch (erro) {
+        Logger.log(`❌ Erro no ajuste de texto: ${erro.toString()}`);
+        SpreadsheetApp.getUi().alert(
+            "❌ Erro no Ajuste",
+            "Ocorreu um erro ao aplicar o ajuste de texto.",
+            SpreadsheetApp.getUi().ButtonSet.OK
+        );
+    }
+}
+
+/**
+* Aplicar apenas cores alternadas e bordas
+*/
+function aplicarCoresEBordas() {
+    try {
+        const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
+        const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
+        
+        if (!abaCentral) {
+            SpreadsheetApp.getUi().alert(
+                "ℹ️ Aba Não Encontrada",
+                "A aba central não foi encontrada.\nExecute a importação primeiro.",
+                SpreadsheetApp.getUi().ButtonSet.OK
+            );
+            return;
+        }
+        
+        const totalLinhas = abaCentral.getLastRow();
+        
+        if (totalLinhas <= 1) {
+            SpreadsheetApp.getUi().alert(
+                "ℹ️ Sem Dados",
+                "Não há dados para formatar.\nExecute a importação primeiro.",
+                SpreadsheetApp.getUi().ButtonSet.OK
+            );
+            return;
+        }
+        
+        // Aplicar formatação condicional e bordas
+        aplicarFormatacaoCondicionalEBordas(abaCentral, totalLinhas);
+        
+        SpreadsheetApp.getUi().alert(
+            "✅ Cores e Bordas Aplicadas",
+            `Formatação condicional e bordas aplicadas com sucesso!\n\n📊 ${totalLinhas - 1} registros formatados\n🎨 Cores alternadas: #ffffff e #ebeff1\n🔲 Bordas: todas as bordas, cor #ffffff`,
+            SpreadsheetApp.getUi().ButtonSet.OK
+        );
+        
+    } catch (erro) {
+        Logger.log(`❌ Erro na formatação: ${erro.toString()}`);
+        SpreadsheetApp.getUi().alert(
+            "❌ Erro na Formatação",
+            "Ocorreu um erro ao aplicar cores e bordas.",
             SpreadsheetApp.getUi().ButtonSet.OK
         );
     }
