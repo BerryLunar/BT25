@@ -1,27 +1,24 @@
 /**
  * ========================================================================
- * SISTEMA BANCO DE TALENTOS - VERSÃO CORRIGIDA
+ * SISTEMA BANCO DE TALENTOS - VERSÃO FINAL CORRIGIDA
  * Santana de Parnaíba - SP
  * ========================================================================
  * 
- * CORREÇÕES IMPLEMENTADAS:
- * 1. Extração correta da sigla das secretarias (usar array ao invés do nome)
- * 2. Mapeamento correto das colunas conforme especificação
- * 3. Ordenação alfabética consistente das secretarias
- * 4. Dados começam na linha 5 (LINHA_INICIO_DADOS = 4)
+ * FUNCIONALIDADES IMPLEMENTADAS:
+ * 1. Função "Atualizar Secretaria Específica" corrigida
+ * 2. Menu simplificado com apenas 3 opções
+ * 3. Autofill na aba "Movimentações 2025"
+ * 4. Sincronização de status com PGE das secretarias
+ * 5. Envio automático de e-mails para secretários e pontos focais
  * 
  * ========================================================================
  */
 
 // ========================================================================
-// CONFIGURAÇÕES GLOBAIS CORRIGIDAS
+// CONFIGURAÇÕES GLOBAIS
 // ========================================================================
 
-/**
- * IDs das 23 planilhas das secretarias municipais - CORRIGIDO
- * Agora usando o nome definido no array como sigla oficial
- */
-const PLANILHAS_SECRETARIAS = [
+var PLANILHAS_SECRETARIAS = [
     { id: "1Z6rfDo09m2nUQIjjAS0S3iuweToHAtIXK9idRb-RzuA", nome: "SECOM" },
     { id: "14W2ewZBf-MgoKUYewj7--FLjDC1lVL6-5EUpHTHDoqU", nome: "SEMEDES" },
     { id: "15ztEc0wlK1mkrRd-DYkfXUn-Vq-k2JT0yLV-JaMeYV4", nome: "SEMOP" },
@@ -47,23 +44,18 @@ const PLANILHAS_SECRETARIAS = [
     { id: "1LPaScCjVYVK6OVA5ZTeUXj3PXiM3nq_1GUdyiTru0jk", nome: "SMSU" }
 ];
 
-/**
-* Configurações do sistema - CORRIGIDAS
-*/
-const CONFIG = {
+var CONFIG = {
     ABA_CENTRAL: "BT 2025",
     ABA_ORIGEM: "Banco de Talentos (Externo)",
-    LINHA_INICIO_DADOS: 4, // Dados começam na linha 5 (índice 4)
+    ABA_MOVIMENTACOES: "Movimentações 2025",
+    LINHA_INICIO_DADOS: 4,
     LOTE_SIZE: 5,
     TIMEOUT_POR_LOTE: 30000,
     DELAY_ENTRE_LOTES: 2000,
     MAX_TENTATIVAS: 2
 };
 
-/**
-* Cabeçalhos padronizados - CONFIRMADOS
-*/
-const CABECALHOS_CENTRAL = [
+var CABECALHOS_CENTRAL = [
     "Secretaria",           // A
     "Nome",                 // B  
     "Prontuário",          // C
@@ -77,20 +69,112 @@ const CABECALHOS_CENTRAL = [
     "Ação (o que)",        // K
     "Condicionalidade",    // L
     "Data da Inclusão",     // M
-    "Status da Movimentação", // N (Q na origem, índice 15)
-    "Interesse do Servidor", // O (R na origem, índice 16)
+    "Status da Movimentação", // N
+    "Interesse do Servidor", // O
 ];
 
+// E-mails dos secretários para notificação
+var EMAILS_SECRETARIOS = {
+    "SECOM": "rogerio.05735@santanadeparnaiba.sp.gov.br",
+    "SEMEDES": "rosalia.37356@santanadeparnaiba.sp.gov.br",
+    "SEMOP": "willian.35778@santanadeparnaiba.sp.gov.br",
+    "SEMUTRANS": "mauriceia.13547@santanadeparnaiba.sp.gov.br",
+    "SMA": "joao.37097@santanadeparnaiba.sp.gov.br",
+    "SMAFEL": "wellisson.41377@santanadeparnaiba.sp.gov.br",
+    "SMCC": "moises.32666@santanadeparnaiba.sp.gov.br",
+    "SMCL": "jose.45849@santanadeparnaiba.sp.gov.br",
+    "SMCT": "ricardo.29338@santanadeparnaiba.sp.gov.br",
+    "SMDS": "camila.42179@santanadeparnaiba.sp.gov.br",
+    "SME": "denise.16870@edu.santanadeparnaiba.sp.gov.br",
+    "SMF": "olga.28375@santanadeparnaiba.sp.gov.br",
+    "SMGAED": "pedro.41937@santanadeparnaiba.sp.gov.br",
+    "SMH": "angela.29303@santanadeparnaiba.sp.gov.br",
+    "SMMAP": "juliana.35797@santanadeparnaiba.sp.gov.br",
+    "SMMF": "mariana.37113@santanadeparnaiba.sp.gov.br",
+    "SMNJ": "albaneide.32343@santanadeparnaiba.sp.gov.br",
+    "SMOP": "gerlaine.40923@santanadeparnaiba.sp.gov.br",
+    "SMOU": "simone.43610@santanadeparnaiba.sp.gov.br",
+    "SMS": "wilson.45853@santanadeparnaiba.sp.gov.br",
+    "SMSD": "viviane.26822@santanadeparnaiba.sp.gov.br",
+    "SMSM": "maria.42819@santanadeparnaiba.sp.gov.br",
+    "SMSU": "ricardo.02732@santanadeparnaiba.sp.gov.br"
+};
+
+// E-mails dos pontos focais para notificação
+var EMAILS_PONTOS_FOCAIS = {
+    "SECOM": "carolina.38338@santanadeparnaiba.sp.gov.br",
+    "SEMEDES": "ana.44313@santanadeparnaiba.sp.gov.br",
+    "SEMOP": "rosangela.20158@santanadeparnaiba.sp.gov.br",
+    "SEMUTRANS": "marcio.37806@santanadeparnaiba.sp.gov.br",
+    "SMA": "libian.34565@santanadeparnaiba.sp.gov.br",
+    "SMAFEL": "vitoria.40868@santanadeparnaiba.sp.gov.br",
+    "SMCC": "jailton.34100@santanadeparnaiba.sp.gov.br",
+    "SMCL": "rubens.26653@santanadeparnaiba.sp.gov.br",
+    "SMCT": "diego.35011@santanadeparnaiba.sp.gov.br",
+    "SMDS": "andre.26547@santanadeparnaiba.sp.gov.br",
+    "SME": "tania.03067@edu.santanadeparnaiba.sp.gov.br",
+    "SMF": "elza.40028@santanadeparnaiba.sp.gov.br",
+    "SMGAED": "vaumil.46330@santanadeparnaiba.sp.gov.br",
+    "SMH": "mauricio.29797@santanadeparnaiba.sp.gov.br",
+    "SMMAP": "diego.28488@santanadeparnaiba.sp.gov.br",
+    "SMMF": "veruska.32203@santanadeparnaiba.sp.gov.br",
+    "SMNJ": "selma.001ff@santanadeparnaiba.sp.gov.br",
+    "SMOP": "veronica.32196@santanadeparnaiba.sp.gov.br",
+    "SMOU": "vivian.29442@santanadeparnaiba.sp.gov.br",
+    "SMS": "raquel.41575@santanadeparnaiba.sp.gov.br",
+    "SMSD": "carla.23199@santanadeparnaiba.sp.gov.br",
+    "SMSM": "vera.27405@santanadeparnaiba.sp.gov.br",
+    "SMSU": "felipe.42463@santanadeparnaiba.sp.gov.br"
+};
+
 // ========================================================================
-// FUNÇÃO PRINCIPAL CORRIGIDA - ORDENAÇÃO ALFABÉTICA
+// MENU PRINCIPAL SIMPLIFICADO
 // ========================================================================
 
-/**
-* Função principal otimizada para importação - CORRIGIDA
-*/
+function onOpen() {
+    try {
+        criarMenuPersonalizado();
+        Logger.log("✅ Menu personalizado criado");
+    } catch (erro) {
+        Logger.log("❌ Erro na inicialização: " + erro.toString());
+    }
+}
+
+function criarMenuPersonalizado() {
+    var ui = SpreadsheetApp.getUi();
+    ui.createMenu("🏛️ Banco de Talentos")
+        .addItem("🔄 Atualizar Banco", "importarBancoDeTalentosOtimizado")
+        .addItem("📊 Atualizar Secretaria Específica", "atualizarSecretariaEspecifica")
+        .addSeparator()
+        .addItem("ℹ️ Sobre o Sistema", "exibirSobre")
+        .addToUi();
+}
+
+function exibirSobre() {
+    var sobre = 
+        "🏛️ SISTEMA BANCO DE TALENTOS\n" +
+        "Programa Governo Eficaz - Santana de Parnaíba\n\n" +
+        "🎯 COMO USAR:\n" +
+        "• Utilize a função \"Atualizar Secretaria Específica\" para adição mais rápida de dados\n" +
+        "• Para atualização completa dos dados, utilize a função \"Atualizar Banco\"\n" +
+        "• Toda movimentação e seus detalhes devem ser registrados na aba \"Movimentações 2025\"\n" +
+        "• Notificações automáticas serão enviadas para secretários e pontos focais\n\n" +
+        "📞 SUPORTE TÉCNICO:\n" +
+        "📧 sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br\n" +
+        "📱 4622-7500 - 8819 / 8644 / 7574\n\n" +
+        "🚀 Versão 3.2 - Sistema de Notificações Duplas\n" +
+        "📅 10/09/2025";
+    
+    SpreadsheetApp.getUi().alert("ℹ️ Sobre o Sistema", sobre, SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+// ========================================================================
+// FUNÇÃO PRINCIPAL DE IMPORTAÇÃO (ATUALIZAR BANCO)
+// ========================================================================
+
 function importarBancoDeTalentosOtimizado() {
-    const inicioExecucao = new Date();
-    let relatorio = {
+    var inicioExecucao = new Date();
+    var relatorio = {
         inicio: inicioExecucao,
         secretariasProcessadas: 0,
         registrosImportados: 0,
@@ -99,43 +183,43 @@ function importarBancoDeTalentosOtimizado() {
     };
     
     try {
-        Logger.log("🚀 === INICIANDO IMPORTAÇÃO CORRIGIDA ===");
+        Logger.log("🚀 === INICIANDO ATUALIZAÇÃO COMPLETA ===");
         
         // Preparar planilha central
-        const { planilhaCentral, abaCentral } = prepararPlanilhaCentral();
+        var planilhaCentral = prepararPlanilhaCentral();
+        var abaCentral = planilhaCentral.abaCentral;
         
-        // ORDENAR SECRETARIAS ALFABETICAMENTE ANTES DO PROCESSAMENTO
-        const secretariasOrdenadas = [...PLANILHAS_SECRETARIAS].sort((a, b) => 
-            a.nome.localeCompare(b.nome)
-        );
-        
-        Logger.log("🔤 Secretarias ordenadas alfabeticamente:");
-        secretariasOrdenadas.forEach((s, i) => {
-            Logger.log(`  ${i + 1}. ${s.nome}`);
+        // Ordenar secretarias alfabeticamente
+        var secretariasOrdenadas = PLANILHAS_SECRETARIAS.slice().sort(function(a, b) {
+            return a.nome.localeCompare(b.nome);
         });
         
-        // Coletar todos os dados primeiro
-        const todosOsDados = [];
+        // Coletar todos os dados
+        var todosOsDados = [];
         
-        // Processar em lotes (usando secretarias ordenadas)
-        const lotes = criarLotes(secretariasOrdenadas, CONFIG.LOTE_SIZE);
+        // Processar em lotes
+        var lotes = criarLotes(secretariasOrdenadas, CONFIG.LOTE_SIZE);
         
-        for (let i = 0; i < lotes.length; i++) {
-            const lote = lotes[i];
-            const numeroLote = i + 1;
-            const totalLotes = lotes.length;
+        for (var i = 0; i < lotes.length; i++) {
+            var lote = lotes[i];
+            var numeroLote = i + 1;
+            var totalLotes = lotes.length;
             
             // Mostrar progresso
-            mostrarProgresso(numeroLote, totalLotes, lote.length);
+            SpreadsheetApp.getActive().toast(
+                "Processando lote " + numeroLote + "/" + totalLotes + "...", 
+                "🔄 Atualizando Banco", 
+                5
+            );
             
-            const resultadoLote = processarLoteSecretarias(lote, numeroLote);
+            var resultadoLote = processarLoteSecretarias(lote, numeroLote);
             
-            // Adicionar dados do lote aos dados totais (já em ordem alfabética)
-            todosOsDados.push(...resultadoLote.dados);
+            // Adicionar dados do lote
+            todosOsDados = todosOsDados.concat(resultadoLote.dados);
             
             // Atualizar relatório
             relatorio.secretariasProcessadas += resultadoLote.processadas;
-            relatorio.erros.push(...resultadoLote.erros);
+            relatorio.erros = relatorio.erros.concat(resultadoLote.erros);
             relatorio.lotes.push(resultadoLote);
             
             // Pausa entre lotes
@@ -144,11 +228,11 @@ function importarBancoDeTalentosOtimizado() {
             }
         }
         
-        // Inserir todos os dados (já ordenados por secretaria)
+        // Inserir todos os dados
         if (todosOsDados.length > 0) {
-            Logger.log(`📝 Inserindo ${todosOsDados.length} registros ordenados...`);
+            Logger.log("📝 Inserindo " + todosOsDados.length + " registros ordenados...");
             
-            const range = abaCentral.getRange(2, 1, todosOsDados.length, CABECALHOS_CENTRAL.length);
+            var range = abaCentral.getRange(2, 1, todosOsDados.length, CABECALHOS_CENTRAL.length);
             range.setValues(todosOsDados);
             
             relatorio.registrosImportados = todosOsDados.length;
@@ -163,128 +247,514 @@ function importarBancoDeTalentosOtimizado() {
         
         exibirResultadoOtimizado(relatorio);
         
-        Logger.log("🎉 === IMPORTAÇÃO CORRIGIDA CONCLUÍDA ===");
+        Logger.log("🎉 === ATUALIZAÇÃO COMPLETA CONCLUÍDA ===");
         
     } catch (erro) {
         Logger.log("💥 ERRO CRÍTICO: " + erro.toString());
         
         SpreadsheetApp.getUi().alert(
-            "❌ Erro na Importação",
-            `Erro crítico durante a importação:\n\n${erro.toString()}\n\n📋 Alguns dados podem ter sido preservados.\nVerifique a planilha e os logs.`,
+            "❌ Erro na Atualização",
+            "Erro crítico durante a atualização:\n\n" + erro.toString(),
             SpreadsheetApp.getUi().ButtonSet.OK
         );
     }
 }
 
 // ========================================================================
-// PROCESSAMENTO INDIVIDUAL DE SECRETARIA - CORRIGIDO
+// FUNÇÃO ATUALIZAR SECRETARIA ESPECÍFICA - CORRIGIDA
 // ========================================================================
 
-/**
-* Processa uma secretaria individual - VERSÃO CORRIGIDA
-*/
+function atualizarSecretariaEspecifica() {
+    var secretariasOrdenadas = PLANILHAS_SECRETARIAS.slice().sort(function(a, b) {
+        return a.nome.localeCompare(b.nome);
+    });
+    
+    var opcoes = [];
+    for (var i = 0; i < secretariasOrdenadas.length; i++) {
+        opcoes.push((i + 1) + " - " + secretariasOrdenadas[i].nome);
+    }
+    
+    var resposta = SpreadsheetApp.getUi().prompt(
+        "📂 Atualizar Secretaria Específica",
+        "Digite o número da secretaria (1-" + PLANILHAS_SECRETARIAS.length + "):\n\n" + opcoes.join("\n"),
+        SpreadsheetApp.getUi().ButtonSet.OK_CANCEL
+    );
+
+    if (resposta.getSelectedButton() === SpreadsheetApp.getUi().Button.OK) {
+        var numero = parseInt(resposta.getResponseText());
+        
+        if (numero >= 1 && numero <= PLANILHAS_SECRETARIAS.length) {
+            var secretaria = secretariasOrdenadas[numero - 1];
+            atualizarUmaSecretaria(secretaria);
+        } else {
+            SpreadsheetApp.getUi().alert("⚠️ Número inválido", "Digite um número entre 1 e " + PLANILHAS_SECRETARIAS.length);
+        }
+    }
+}
+
+function atualizarUmaSecretaria(secretaria) {
+    try {
+        Logger.log("📂 Atualizando secretaria: " + secretaria.nome);
+        
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        var abaCentral = ss.getSheetByName(CONFIG.ABA_CENTRAL);
+        
+        // Criar aba central se não existir
+        if (!abaCentral) {
+            var planilhaCentral = prepararPlanilhaCentral();
+            abaCentral = planilhaCentral.abaCentral;
+        }
+
+        // Processar dados da secretaria
+        var resultado = processarSecretariaOtimizada(secretaria);
+
+        if (resultado.sucesso && resultado.dados.length > 0) {
+            // Remover dados antigos da secretaria
+            removerDadosSecretaria(abaCentral, secretaria.nome);
+            
+            // Inserir novos dados no final
+            var ultimaLinha = abaCentral.getLastRow();
+            var novaLinha = ultimaLinha + 1;
+            
+            abaCentral.getRange(novaLinha, 1, resultado.dados.length, CABECALHOS_CENTRAL.length)
+                .setValues(resultado.dados);
+            
+            // Aplicar formatação
+            aplicarFormatacaoOtimizada(abaCentral, novaLinha + resultado.dados.length - 1);
+            
+            // Reordenar dados alfabeticamente
+            reordenarDadosAlfabeticamente(abaCentral);
+
+            SpreadsheetApp.getUi().alert(
+                "✅ Secretaria Atualizada",
+                resultado.siglaSecretaria + ": " + resultado.dados.length + " registros processados e inseridos com sucesso!",
+                SpreadsheetApp.getUi().ButtonSet.OK
+            );
+            
+            Logger.log("✅ " + secretaria.nome + ": " + resultado.dados.length + " registros atualizados");
+            
+        } else if (resultado.sucesso && resultado.dados.length === 0) {
+            SpreadsheetApp.getUi().alert(
+                "ℹ️ Sem Dados",
+                secretaria.nome + ": Nenhum registro encontrado para atualização.",
+                SpreadsheetApp.getUi().ButtonSet.OK
+            );
+        } else {
+            SpreadsheetApp.getUi().alert(
+                "❌ Erro na Atualização",
+                "Erro ao processar " + secretaria.nome + ":\n" + resultado.erro,
+                SpreadsheetApp.getUi().ButtonSet.OK
+            );
+        }
+        
+    } catch (erro) {
+        Logger.log("❌ Erro ao atualizar " + secretaria.nome + ": " + erro.toString());
+        SpreadsheetApp.getUi().alert(
+            "❌ Erro Crítico",
+            "Erro inesperado ao atualizar " + secretaria.nome + ". Consulte os logs.",
+            SpreadsheetApp.getUi().ButtonSet.OK
+        );
+    }
+}
+
+function removerDadosSecretaria(abaCentral, nomeSecretaria) {
+    try {
+        var totalLinhas = abaCentral.getLastRow();
+        if (totalLinhas <= 1) return;
+        
+        // Obter todos os dados
+        var dados = abaCentral.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length).getValues();
+        
+        // Filtrar dados, removendo a secretaria específica
+        var dadosFiltrados = [];
+        for (var i = 0; i < dados.length; i++) {
+            var secretariaLinha = (dados[i][0] || "").toString().trim();
+            if (secretariaLinha !== nomeSecretaria) {
+                dadosFiltrados.push(dados[i]);
+            }
+        }
+        
+        // Limpar área de dados
+        if (totalLinhas > 1) {
+            abaCentral.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length).clearContent();
+        }
+        
+        // Reescrever dados filtrados
+        if (dadosFiltrados.length > 0) {
+            abaCentral.getRange(2, 1, dadosFiltrados.length, CABECALHOS_CENTRAL.length).setValues(dadosFiltrados);
+        }
+        
+        Logger.log("📝 Dados antigos da " + nomeSecretaria + " removidos");
+        
+    } catch (erro) {
+        Logger.log("⚠️ Erro ao remover dados da " + nomeSecretaria + ": " + erro.toString());
+    }
+}
+
+function reordenarDadosAlfabeticamente(abaCentral) {
+    try {
+        var totalLinhas = abaCentral.getLastRow();
+        if (totalLinhas <= 2) return;
+        
+        // Obter todos os dados
+        var dados = abaCentral.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length).getValues();
+        
+        // Ordenar alfabeticamente por secretaria
+        dados.sort(function(a, b) {
+            var secretariaA = (a[0] || "").toString().toUpperCase();
+            var secretariaB = (b[0] || "").toString().toUpperCase();
+            return secretariaA.localeCompare(secretariaB);
+        });
+        
+        // Reescrever dados ordenados
+        abaCentral.getRange(2, 1, dados.length, CABECALHOS_CENTRAL.length).setValues(dados);
+        
+        Logger.log("📤 Dados reordenados alfabeticamente");
+        
+    } catch (erro) {
+        Logger.log("⚠️ Erro ao reordenar dados: " + erro.toString());
+    }
+}
+
+// ========================================================================
+// FUNÇÃO ONEDIT - AUTOFILL E SINCRONIZAÇÃO
+// ========================================================================
+
+function onEdit(e) {
+    try {
+        var aba = e.range.getSheet();
+        var nomeAba = aba.getName();
+        
+        if (nomeAba !== CONFIG.ABA_MOVIMENTACOES) return;
+
+        var colunaEditada = e.range.getColumn();
+        var linhaEditada = e.range.getRow();
+
+        // Autofill baseado no Prontuário (coluna C)
+        if (colunaEditada === 3 && linhaEditada >= 3) {
+            executarAutofill(aba, linhaEditada, e.range.getValue());
+        }
+
+        // Sincronização de status (coluna F)
+        if (colunaEditada === 6 && linhaEditada >= 3) {
+            sincronizarStatus(aba, linhaEditada);
+        }
+
+    } catch (erro) {
+        Logger.log("❌ Erro no onEdit Movimentações: " + erro.toString());
+    }
+}
+
+function executarAutofill(aba, linha, prontuario) {
+    try {
+        var prontuarioLimpo = prontuario.toString().trim();
+        if (!prontuarioLimpo) return;
+
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        var abaBT = ss.getSheetByName(CONFIG.ABA_CENTRAL);
+        
+        if (!abaBT) {
+            Logger.log("⚠️ Aba BT 2025 não encontrada para autofill");
+            return;
+        }
+
+        var totalLinhas = abaBT.getLastRow();
+        if (totalLinhas <= 1) return;
+
+        // Buscar dados na aba BT 2025
+        var dadosBT = abaBT.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length).getValues();
+        
+        var encontrado = null;
+        for (var i = 0; i < dadosBT.length; i++) {
+            var prontuarioBT = (dadosBT[i][2] || "").toString().trim(); // Coluna C (Prontuário)
+            if (prontuarioBT === prontuarioLimpo) {
+                encontrado = dadosBT[i];
+                break;
+            }
+        }
+
+        if (encontrado) {
+            // Preencher automaticamente
+            aba.getRange(linha, 1).setValue(encontrado[0]);  // Secretaria (A)
+            aba.getRange(linha, 2).setValue(encontrado[1]);  // Nome (B)
+            aba.getRange(linha, 4).setValue(encontrado[5]);  // Cargo (D) - coluna F do BT
+            aba.getRange(linha, 5).setValue(encontrado[10]); // Ação (E) - coluna K do BT
+            
+            Logger.log("✅ Autofill executado para prontuário " + prontuarioLimpo);
+            
+            // Mostrar confirmação visual
+            SpreadsheetApp.getActive().toast(
+                "Dados preenchidos para " + encontrado[1] + " (" + encontrado[0] + ")", 
+                "📋 Autofill", 
+                3
+            );
+        } else {
+            Logger.log("⚠️ Prontuário " + prontuarioLimpo + " não encontrado na base de dados");
+            SpreadsheetApp.getActive().toast(
+                "Prontuário " + prontuarioLimpo + " não encontrado na base de dados", 
+                "⚠️ Autofill", 
+                3
+            );
+        }
+
+    } catch (erro) {
+        Logger.log("❌ Erro no autofill: " + erro.toString());
+    }
+}
+
+// ========================================================================
+// SINCRONIZAÇÃO DE STATUS E ENVIO DE E-MAIL
+// ========================================================================
+
+function sincronizarStatus(aba, linha) {
+    try {
+        var secretaria = aba.getRange(linha, 1).getValue();     // Coluna A
+        var nome = aba.getRange(linha, 2).getValue();           // Coluna B
+        var prontuario = aba.getRange(linha, 3).getValue();     // Coluna C
+        var statusNovo = aba.getRange(linha, 6).getValue();     // Coluna F
+
+        if (!secretaria || !prontuario || !statusNovo) {
+            Logger.log("⚠️ Dados insuficientes para sincronização de status");
+            return;
+        }
+
+        Logger.log("🔄 Sincronizando status: " + secretaria + " - " + prontuario + " - " + statusNovo);
+
+        // Encontrar a secretaria correspondente
+        var secretariaInfo = null;
+        for (var i = 0; i < PLANILHAS_SECRETARIAS.length; i++) {
+            if (PLANILHAS_SECRETARIAS[i].nome === secretaria.toString().trim()) {
+                secretariaInfo = PLANILHAS_SECRETARIAS[i];
+                break;
+            }
+        }
+        
+        if (!secretariaInfo) {
+            Logger.log("⚠️ Secretaria " + secretaria + " não encontrada no array");
+            return;
+        }
+
+        // Atualizar PGE da secretaria
+        try {
+            var planilhaPGE = SpreadsheetApp.openById(secretariaInfo.id);
+            var abaPGE = planilhaPGE.getSheetByName("Planejamento de Gestão Estratégica");
+            
+            if (!abaPGE) {
+                Logger.log("⚠️ Aba PGE não encontrada na planilha da " + secretaria);
+                return;
+            }
+
+            var totalLinhasPGE = abaPGE.getLastRow();
+            if (totalLinhasPGE < 4) return;
+
+            // Buscar o prontuário na planilha PGE (dados começam na linha 4, coluna C)
+            var dadosPGE = abaPGE.getRange(4, 1, totalLinhasPGE - 3, abaPGE.getLastColumn()).getValues();
+
+            for (var i = 0; i < dadosPGE.length; i++) {
+                var prontuarioPGE = (dadosPGE[i][2] || "").toString().trim(); // Coluna C
+                
+                if (prontuarioPGE === prontuario.toString().trim()) {
+                    // Atualizar status na coluna Q (índice 16)
+                    abaPGE.getRange(i + 4, 17).setValue(statusNovo); // Coluna Q = índice 17
+                    Logger.log("✅ Status atualizado no PGE da " + secretaria);
+                    break;
+                }
+            }
+
+        } catch (erroPGE) {
+            Logger.log("❌ Erro ao atualizar PGE da " + secretaria + ": " + erroPGE.toString());
+        }
+
+        // Enviar e-mail se necessário
+        var statusParaEmail = ["Em Andamento", "Concluído"];
+        var enviarEmail = false;
+        for (var j = 0; j < statusParaEmail.length; j++) {
+            if (statusNovo.toString() === statusParaEmail[j]) {
+                enviarEmail = true;
+                break;
+            }
+        }
+        
+        if (enviarEmail) {
+            enviarEmailNotificacao(secretaria, nome, prontuario, statusNovo);
+        }
+
+        // Confirmação visual
+        SpreadsheetApp.getActive().toast(
+            "Status \"" + statusNovo + "\" sincronizado para " + secretaria, 
+            "🔄 Sincronização", 
+            3
+        );
+
+    } catch (erro) {
+        Logger.log("❌ Erro ao sincronizar status: " + erro.toString());
+    }
+}
+
+function enviarEmailNotificacao(secretaria, nome, prontuario, status) {
+    try {
+        var emailSecretario = EMAILS_SECRETARIOS[secretaria];
+        var emailPontoFocal = EMAILS_PONTOS_FOCAIS[secretaria];
+        
+        if (!emailSecretario && !emailPontoFocal) {
+            Logger.log("⚠️ Nenhum e-mail encontrado para a secretaria: " + secretaria);
+            return;
+        }
+
+        // Preparar lista de destinatários
+        var destinatarios = [];
+        if (emailSecretario) destinatarios.push(emailSecretario);
+        if (emailPontoFocal) destinatarios.push(emailPontoFocal);
+
+        var assunto = "Banco de Talentos - Movimentação de Servidor (" + status + ")";
+        var corpo = criarCorpoEmailNotificacao(secretaria, nome, prontuario, status);
+
+        // Enviar para todos os destinatários
+        for (var i = 0; i < destinatarios.length; i++) {
+            try {
+                MailApp.sendEmail({
+                    to: destinatarios[i],
+                    subject: assunto,
+                    htmlBody: corpo
+                });
+                
+                Logger.log("📧 E-mail enviado para " + destinatarios[i] + " (" + secretaria + ")");
+                
+            } catch (erroEmail) {
+                Logger.log("❌ Erro ao enviar e-mail para " + destinatarios[i] + ": " + erroEmail.toString());
+            }
+        }
+
+        // Confirmação visual consolidada
+        var tipoDestinatario = "";
+        if (emailSecretario && emailPontoFocal) {
+            tipoDestinatario = "secretário e ponto focal";
+        } else if (emailSecretario) {
+            tipoDestinatario = "secretário";
+        } else {
+            tipoDestinatario = "ponto focal";
+        }
+
+        SpreadsheetApp.getActive().toast(
+            "E-mail enviado para " + tipoDestinatario + " da " + secretaria, 
+            "📧 Notificação", 
+            3
+        );
+
+    } catch (erro) {
+        Logger.log("❌ Erro ao enviar notificação: " + erro.toString());
+    }
+}
+
+function criarCorpoEmailNotificacao(secretaria, nome, prontuario, status) {
+    return "<div style=\"font-family: Calibri, Arial, sans-serif; line-height: 1.6; color: #333;\">" +
+        "<h2 style=\"color: #1f4e79;\">🏛️ Banco de Talentos - Prefeitura de Santana de Parnaíba</h2>" +
+        "<p><strong>Prezado(a) Gestor(a),</strong></p>" +
+        "<p>Informamos que um servidor vinculado à <strong>" + secretaria + "</strong> encontra-se em processo de movimentação através do Banco de Talentos.</p>" +
+        "<div style=\"background-color: #f8f9fa; padding: 15px; border-left: 4px solid #1f4e79; margin: 20px 0;\">" +
+        "<h3 style=\"margin-top: 0; color: #1f4e79;\">📋 Dados da Movimentação:</h3>" +
+        "<p><strong>• Nome do Servidor:</strong> " + nome + "</p>" +
+        "<p><strong>• Prontuário:</strong> " + prontuario + "</p>" +
+        "<p><strong>• Status Atual:</strong> " + status + "</p>" +
+        "<p><strong>• Secretaria de Origem:</strong> " + secretaria + "</p>" +
+        "</div>" +
+        "<p>Este é um aviso automático do Sistema Banco de Talentos do Programa Governo Eficaz.</p>" +
+        "<p>Para mais informações ou esclarecimentos, entre em contato conosco:</p>" +
+        "<p>📧 <strong>sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br</strong><br>" +
+        "📱 <strong>4622-7500 - 8819 / 8644 / 7574</strong></p>" +
+        "<hr style=\"border: none; border-top: 1px solid #ddd; margin: 30px 0;\">" +
+        "<p style=\"font-size: 12px; color: #666;\">" +
+        "<strong>Atenciosamente,</strong><br>" +
+        "Programa Governo Eficaz<br>" +
+        "Prefeitura de Santana de Parnaíba<br>" +
+        "<em>Sistema automatizado - não responda este e-mail</em>" +
+        "</p>" +
+        "</div>";
+}
+
+// ========================================================================
+// FUNÇÕES AUXILIARES E DE PROCESSAMENTO
+// ========================================================================
+
 function processarSecretariaOtimizada(secretaria) {
     try {
-        // USAR A SIGLA DIRETAMENTE DO ARRAY - SEM EXTRAÇÃO DO NOME DA PLANILHA
-        const siglaSecretaria = secretaria.nome; // Usar diretamente a sigla do array
+        var siglaSecretaria = secretaria.nome;
         
-        Logger.log(`📂 Processando: ${siglaSecretaria} (ID: ${secretaria.id.substring(0, 10)}...)`);
+        Logger.log("📂 Processando: " + siglaSecretaria + " (ID: " + secretaria.id.substring(0, 10) + "...)");
         
         // Abrir planilha
-        const planilhaExterna = SpreadsheetApp.openById(secretaria.id);
-        const nomeCompletoPlanilha = planilhaExterna.getName();
-        
-        Logger.log(`📋 Nome da planilha: ${nomeCompletoPlanilha}`);
-        Logger.log(`🏷️ Sigla usada: ${siglaSecretaria}`);
+        var planilhaExterna = SpreadsheetApp.openById(secretaria.id);
         
         // Verificar aba
-        const abaOrigem = planilhaExterna.getSheetByName(CONFIG.ABA_ORIGEM);
+        var abaOrigem = planilhaExterna.getSheetByName(CONFIG.ABA_ORIGEM);
         if (!abaOrigem) {
             return { 
                 sucesso: false, 
-                erro: `Aba "${CONFIG.ABA_ORIGEM}" não encontrada`,
-                siglaSecretaria 
+                erro: "Aba \"" + CONFIG.ABA_ORIGEM + "\" não encontrada",
+                siglaSecretaria: siglaSecretaria 
             };
         }
         
-        // Obter dados de forma otimizada
-        const ultimaLinha = abaOrigem.getLastRow();
+        // Obter dados
+        var ultimaLinha = abaOrigem.getLastRow();
         
         if (ultimaLinha <= CONFIG.LINHA_INICIO_DADOS) {
-            Logger.log(`ℹ️ Sem dados: ${siglaSecretaria}`);
+            Logger.log("ℹ️ Sem dados: " + siglaSecretaria);
             return { 
                 sucesso: true, 
                 dados: [], 
-                siglaSecretaria 
+                siglaSecretaria: siglaSecretaria 
             };
         }
         
-        // ============================================================================
-        // MAPEAMENTO CORRETO DAS COLUNAS - CONFIRMADO:
-        // DADOS COMEÇAM NA LINHA 5 (CONFIG.LINHA_INICIO_DADOS = 4)
-        // B = Nome | C = Prontuário | D = Formação | E = Área | F = Cargo 
-        // G = CC/FE | H = Função | I = Readaptado | J = Justificativa 
-        // K = Ação | L = Condicionalidade | M = Data da Inclusão | N = Status da Movimentação | O = Interesse do Servidor
-        // ============================================================================
-        
         // Calcular linhas de dados disponíveis
-        const totalLinhas = ultimaLinha - CONFIG.LINHA_INICIO_DADOS;
+        var totalLinhas = ultimaLinha - CONFIG.LINHA_INICIO_DADOS;
         
-        Logger.log(`📊 ${siglaSecretaria}: Linha ${CONFIG.LINHA_INICIO_DADOS + 1} até ${ultimaLinha} (${totalLinhas} linhas)`);
+        Logger.log("📊 " + siglaSecretaria + ": Linha " + (CONFIG.LINHA_INICIO_DADOS + 1) + " até " + ultimaLinha + " (" + totalLinhas + " linhas)");
         
-        // Ler dados das colunas B até R 
-        // B=2, C=3, D=4, E=5, F=6, G=7, H=8, I=9, J=10, K=11, L=12, M=13, N=14, O=15, Q=16, R=17
-        const dadosRange = abaOrigem.getRange(
-            CONFIG.LINHA_INICIO_DADOS + 1, // Linha 5 (índice 4 + 1)
-            2, // Coluna B (Nome) = índice 2
+        // Ler dados das colunas B até R
+        var dadosRange = abaOrigem.getRange(
+            CONFIG.LINHA_INICIO_DADOS + 1,
+            2, // Coluna B (Nome)
             totalLinhas, 
-            18 // Colunas B até R (B=2 até R=18 = 18 colunas)
+            17 // Colunas B até R
         );
         
-        const dadosBrutos = dadosRange.getValues();
+        var dadosBrutos = dadosRange.getValues();
         
-        Logger.log(`📖 ${siglaSecretaria}: Lidas ${dadosBrutos.length} linhas de dados brutos`);
+        Logger.log("📖 " + siglaSecretaria + ": Lidas " + dadosBrutos.length + " linhas de dados brutos");
         
-        // Processar dados com mapeamento correto
-        const dadosProcessados = [];
+        // Processar dados
+        var dadosProcessados = [];
         
-        dadosBrutos.forEach((linha, indiceLinhaArray) => {
-            const linhaReal = CONFIG.LINHA_INICIO_DADOS + 1 + indiceLinhaArray;
+        for (var i = 0; i < dadosBrutos.length; i++) {
+            var linha = dadosBrutos[i];
+            var nome = (linha[0] || "").toString().trim();
             
-            // Verificar se linha tem dados (verificar pelo menos nome)
-            const nome = (linha[0] || "").toString().trim(); // linha[0] = Nome (coluna B)
-            
-            if (nome) { // Se tem nome, processar a linha
-                
-                // Mapear corretamente conforme especificação:
-                const linhaCentral = [
-                    siglaSecretaria,                           // A - Secretaria (usar sigla do array)
-                    nome,                                      // B - Nome (B na origem, índice 0)
-                    (linha[1] || "").toString().trim(),        // C - Prontuário (C na origem, índice 1)  
-                    (linha[2] || "").toString().trim(),        // D - Formação Acadêmica (D na origem, índice 2)
-                    (linha[3] || "").toString().trim(),        // E - Área de Formação (E na origem, índice 3)
-                    (linha[4] || "").toString().trim(),        // F - Cargo Concurso (F na origem, índice 4)
-                    (linha[5] || "").toString().trim(),        // G - CC / FE (G na origem, índice 5)
-                    (linha[6] || "").toString().trim(),        // H - Função Gratificada (H na origem, índice 6)
-                    (linha[7] || "").toString().trim(),        // I - Readaptado (I na origem, índice 7)
-                    (linha[8] || "").toString().trim(),        // J - Justificativa (J na origem, índice 8)
-                    (linha[9] || "").toString().trim(),        // K - Ação (o que) (K na origem, índice 9)
-                    (linha[10] || "").toString().trim(),       // L - Condicionalidade (L na origem, índice 10)
-                    formatarDataBrasileira(linha[12] || ""),    // M - Data da Inclusão (M na origem, índice 12)
-                    (linha[15] || "").toString().trim(),       // N - Status da Movimentação (Q na origem, índice 15)
-                    (linha[16] || "").toString().trim(),       // O - Interesse do Servidor (R na origem, índice 16)
+            if (nome) {
+                var linhaCentral = [
+                    siglaSecretaria,                           // A - Secretaria
+                    nome,                                      // B - Nome
+                    (linha[1] || "").toString().trim(),        // C - Prontuário
+                    (linha[2] || "").toString().trim(),        // D - Formação Acadêmica
+                    (linha[3] || "").toString().trim(),        // E - Área de Formação
+                    (linha[4] || "").toString().trim(),        // F - Cargo Concurso
+                    (linha[5] || "").toString().trim(),        // G - CC / FE
+                    (linha[6] || "").toString().trim(),        // H - Função Gratificada
+                    (linha[7] || "").toString().trim(),        // I - Readaptado
+                    (linha[8] || "").toString().trim(),        // J - Justificativa
+                    (linha[9] || "").toString().trim(),        // K - Ação
+                    (linha[10] || "").toString().trim(),       // L - Condicionalidade
+                    formatarDataBrasileira(linha[11] || ""),   // M - Data da Inclusão
+                    (linha[14] || "").toString().trim(),       // N - Status da Movimentação
+                    (linha[15] || "").toString().trim(),       // O - Interesse do Servidor
                 ];
             
                 dadosProcessados.push(linhaCentral);
-                
-                // Log detalhado para primeira linha de cada secretaria (debug)
-                if (dadosProcessados.length === 1) {
-                    Logger.log(`🔍 ${siglaSecretaria} - Primeira linha (${linhaReal}): ${nome} | ${linhaCentral[2]} | ${linhaCentral[3]}`);
-                }
             }
-        });
+        }
 
-        Logger.log(`✅ ${siglaSecretaria}: ${dadosProcessados.length} registros processados`);
+        Logger.log("✅ " + siglaSecretaria + ": " + dadosProcessados.length + " registros processados");
         
         return {
             sucesso: true,
@@ -293,7 +763,7 @@ function processarSecretariaOtimizada(secretaria) {
         };
         
     } catch (erro) {
-        Logger.log(`❌ Erro em ${secretaria.nome}: ${erro.toString()}`);
+        Logger.log("❌ Erro em " + secretaria.nome + ": " + erro.toString());
         return {
             sucesso: false,
             erro: erro.toString(),
@@ -302,681 +772,72 @@ function processarSecretariaOtimizada(secretaria) {
     }
 }
 
-// ========================================================================
-// FUNÇÃO AUXILIAR PARA BUSCAR SIGLA POR ID (CASO NECESSÁRIO)
-// ========================================================================
-
-/**
-* Busca sigla da secretaria pelo ID da planilha
-*/
-function buscarSiglaPorId(idPlanilha) {
-    const secretaria = PLANILHAS_SECRETARIAS.find(s => s.id === idPlanilha);
-    return secretaria ? secretaria.nome : "DESCONHECIDA";
-}
-
-/**
-* Lista todas as secretarias em ordem alfabética (para debug)
-*/
-function listarSecretariasOrdenadas() {
-    const secretariasOrdenadas = [...PLANILHAS_SECRETARIAS].sort((a, b) => 
-        a.nome.localeCompare(b.nome)
-    );
+function prepararPlanilhaCentral() {
+    var planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
+    var abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
     
-    Logger.log("🔤 === SECRETARIAS EM ORDEM ALFABÉTICA ===");
-    secretariasOrdenadas.forEach((secretaria, indice) => {
-        Logger.log(`${String(indice + 1).padStart(2, '0')}. ${secretaria.nome}`);
-    });
-    
-    return secretariasOrdenadas;
-}
-
-// ========================================================================
-// TESTE E VALIDAÇÃO DAS CORREÇÕES
-// ========================================================================
-
-/**
-* Teste ESPECÍFICO do mapeamento com UMA secretaria
-*/
-function testeMapemantoColunas() {
-    Logger.log("🧪 === TESTE DO MAPEAMENTO DE COLUNAS ===");
-    
-    // Testar com a primeira secretaria da lista (SECOM)
-    const secretariaTeste = PLANILHAS_SECRETARIAS[0]; 
-    
-    try {
-        Logger.log(`📋 Testando: ${secretariaTeste.nome}`);
-        
-        const planilha = SpreadsheetApp.openById(secretariaTeste.id);
-        const aba = planilha.getSheetByName(CONFIG.ABA_ORIGEM);
-        
-        if (!aba) {
-            Logger.log(`❌ Aba não encontrada: ${CONFIG.ABA_ORIGEM}`);
-            return;
-        }
-        
-        const ultimaLinha = aba.getLastRow();
-        Logger.log(`📊 Última linha: ${ultimaLinha}`);
-        
-        if (ultimaLinha > CONFIG.LINHA_INICIO_DADOS) {
-            // Ler cabeçalhos da planilha de origem
-            const cabecalhos = aba.getRange(1, 1, 1, 20).getValues()[0];
-            Logger.log("📋 Cabeçalhos encontrados:");
-            cabecalhos.forEach((cab, indice) => {
-                const coluna = String.fromCharCode(65 + indice); // A=65
-                if (cab && cab.toString().trim()) {
-                    Logger.log(`  ${coluna}${indice + 1}: ${cab}`);
-                }
-            });
-            
-            // Ler primeira linha de dados
-            const primeiraLinhaDados = aba.getRange(CONFIG.LINHA_INICIO_DADOS + 1, 1, 1, 20).getValues()[0];
-            Logger.log("📋 Primeira linha de dados:");
-            primeiraLinhaDados.forEach((valor, indice) => {
-                const coluna = String.fromCharCode(65 + indice);
-                if (valor && valor.toString().trim()) {
-                    Logger.log(`  ${coluna}: ${valor}`);
-                }
-            });
-            
-            // Testar processamento completo
-            Logger.log("\n🔍 === TESTE DE PROCESSAMENTO ===");
-            const resultado = processarSecretariaOtimizada(secretariaTeste);
-            
-            if (resultado.sucesso && resultado.dados.length > 0) {
-                const primeiroRegistro = resultado.dados[0];
-                Logger.log("✅ Primeiro registro processado:");
-                CABECALHOS_CENTRAL.forEach((cabecalho, indice) => {
-                    Logger.log(`  ${cabecalho}: ${primeiroRegistro[indice]}`);
-                });
-            }
-        }
-        
-        const relatorio = `
-🧪 TESTE DE MAPEAMENTO CONCLUÍDO
-
-📋 Secretaria: ${secretariaTeste.nome}
-📊 Última linha: ${ultimaLinha}
-
-🔧 AJUSTE APLICADO:
-• Leitura dos dados começa na COLUNA B (Nome)
-• Ignora coluna A (pode ter numeração ou estar vazia)
-
-✅ Verifique os logs do Apps Script para ver:
-• Cabeçalhos encontrados (B até T)
-• Primeira linha de dados (B até T)
-• Mapeamento aplicado
-• Primeiro registro processado
-
-📝 PRÓXIMO PASSO:
-Se os dados estiverem corretos nos logs, execute "Importar Dados"
-        `;
-        
-        SpreadsheetApp.getUi().alert(
-            "🧪 Teste de Mapeamento",
-            relatorio,
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-        
-    } catch (erro) {
-        Logger.log(`❌ Erro no teste: ${erro.toString()}`);
-        SpreadsheetApp.getUi().alert(
-            "❌ Erro no Teste",
-            `Erro no teste de mapeamento:\n${erro.toString()}`,
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-    }
-}
-
-/**
-* Validar estrutura de todas as secretarias
-*/
-function validarEstruturaSecretarias() {
-    Logger.log("🔍 === VALIDAÇÃO DE ESTRUTURA DAS SECRETARIAS ===");
-    
-    let sucessos = 0;
-    let erros = [];
-    
-    PLANILHAS_SECRETARIAS.forEach((secretaria, indice) => {
-        try {
-            const planilha = SpreadsheetApp.openById(secretaria.id);
-            const aba = planilha.getSheetByName(CONFIG.ABA_ORIGEM);
-            
-            if (aba) {
-                const ultimaLinha = aba.getLastRow();
-                Logger.log(`✅ ${String(indice + 1).padStart(2, '0')}. ${secretaria.nome}: ${ultimaLinha} linhas`);
-                sucessos++;
-            } else {
-                const erro = `Aba "${CONFIG.ABA_ORIGEM}" não encontrada`;
-                Logger.log(`❌ ${String(indice + 1).padStart(2, '0')}. ${secretaria.nome}: ${erro}`);
-                erros.push(`${secretaria.nome}: ${erro}`);
-            }
-            
-        } catch (erro) {
-            Logger.log(`💥 ${String(indice + 1).padStart(2, '0')}. ${secretaria.nome}: ${erro.toString()}`);
-            erros.push(`${secretaria.nome}: ${erro.toString()}`);
-        }
-        
-        // Pausa para evitar timeout
-        Utilities.sleep(100);
-    });
-    
-    const resumo = `
-🔍 VALIDAÇÃO CONCLUÍDA:
-✅ Sucessos: ${sucessos}/${PLANILHAS_SECRETARIAS.length}
-❌ Erros: ${erros.length}
-📊 Taxa de sucesso: ${Math.round(sucessos/PLANILHAS_SECRETARIAS.length*100)}%
-    `;
-    
-    Logger.log(resumo);
-    
-    if (erros.length > 0) {
-        Logger.log("❌ Lista de erros:");
-        erros.forEach(erro => Logger.log(`  • ${erro}`));
+    if (!abaCentral) {
+        Logger.log("📋 Criando aba \"" + CONFIG.ABA_CENTRAL + "\"");
+        abaCentral = planilhaCentral.insertSheet(CONFIG.ABA_CENTRAL);
     }
     
-    return { sucessos, erros, total: PLANILHAS_SECRETARIAS.length };
+    // Limpar e configurar cabeçalhos
+    abaCentral.clear();
+    var rangeCabecalho = abaCentral.getRange(1, 1, 1, CABECALHOS_CENTRAL.length);
+    rangeCabecalho.setValues([CABECALHOS_CENTRAL]);
+    
+    // Formatação do cabeçalho
+    rangeCabecalho
+        .setBackground("#1f4e79")
+        .setFontColor("#ffffff")
+        .setFontWeight("bold")
+        .setFontFamily("Calibri")
+        .setFontSize(10)
+        .setHorizontalAlignment("center")
+        .setVerticalAlignment("middle");
+    
+    abaCentral.setFrozenRows(1);
+    
+    return { planilhaCentral: planilhaCentral, abaCentral: abaCentral };
 }
 
-// ========================================================================
-// MENU ATUALIZADO COM FUNÇÕES DE TESTE
-// ========================================================================
-
-/**
-* Cria menu com opções de teste
-*/
-function criarMenuPersonalizadoCorrigido() {
-  const ui = SpreadsheetApp.getUi();
-  
-  ui.createMenu("🏛️ Banco de Talentos v3.1")
-    .addItem("🔄 Importar Dados", "iniciarImportacaoManual")
-    .addSeparator()
-    .addItem("📊 Atualizar Secretaria Específica", "atualizarSecretariaEspecifica")
-    .addSeparator()
-    .addSubMenu(ui.createMenu("🧪 Testes e Debug")
-        .addItem("🧪 Testar Mapeamento", "testeMapemantoColunas")
-        .addItem("🔍 Validar Estruturas", "validarEstruturaSecretarias")
-        .addItem("🔤 Listar Secretarias Ordenadas", "listarSecretariasOrdenadas")
-        .addItem("🧹 Limpar Logs", "limparLogs"))
-    .addSeparator()
-    .addSubMenu(ui.createMenu("🎨 Personalização")
-        .addItem("🎨 Aplicar Formatação Brasileira", "aplicarFormatacaoBrasileira")
-        .addItem("📅 Corrigir Formato de Datas", "corrigirFormatoDatas")
-        .addItem("🔲 Aplicar Cores e Bordas", "aplicarCoresEBordas")
-        .addItem("📝 Ajustar Texto", "aplicarAjusteTexto"))
-    .addSeparator()
-    .addItem("📈 Relatório Completo", "gerarRelatorioCompleto")
-    .addItem("🧹 Limpar e Reiniciar", "limparEReiniciar")
-    .addSeparator()
-    .addItem("ℹ️ Sobre o Sistema", "exibirSobre")
-    .addToUi();
-}
-// ========================================================================
-// INICIALIZAÇÃO CORRIGIDA
-// ========================================================================
-
-/**
-* Função executada ao abrir - VERSÃO CORRIGIDA
-*/
-function onOpen() {
-    try {
-        criarMenuPersonalizadoCorrigido();
-        Logger.log("✅ Menu personalizado corrigido criado");
-        
-        // Mostrar informações da versão corrigida
-        mostrarInstrucoesCorrigidas();
-        
-    } catch (erro) {
-        Logger.log("❌ Erro na inicialização: " + erro.toString());
-    }
-}
-
-/**
-* Mostra instruções da versão corrigida
-*/
-function mostrarInstrucoesCorrigidas() {
-    const instrucoes = `
-🏛️ SISTEMA BANCO DE TALENTOS - VERSÃO 3.1 CORRIGIDA
-
-🔧 CORREÇÕES IMPLEMENTADAS:
-• ✅ Sigla das secretarias: agora usa o array PLANILHAS_SECRETARIAS
-• ✅ Mapeamento de colunas: corrigido conforme especificação
-• ✅ Ordenação alfabética: secretarias sempre ordenadas
-• ✅ Início dos dados: confirmado linha 5 (índice 4)
-
-🧪 NOVAS OPÇÕES DE TESTE:
-• "Testar Mapeamento" - verifica se as colunas estão corretas
-• "Validar Estruturas" - testa todas as secretarias
-• "Listar Secretarias Ordenadas" - mostra ordem alfabética
-
-⚡ COMO USAR:
-1. Execute "Testar Mapeamento" primeiro para verificar
-2. Use "Importar Dados" para processamento completo
-3. Dados ficarão ordenados alfabeticamente por secretaria
-
-🎯 VERSÃO 3.1 - PROBLEMAS CORRIGIDOS!
-    `;
-    
-    SpreadsheetApp.getUi().alert(
-        "🎉 Sistema Corrigido - v3.1!", 
-        instrucoes,
-        SpreadsheetApp.getUi().ButtonSet.OK
-    );
-}
-
-/**
- * ========================================================================
- * 🎉 RESUMO DAS CORREÇÕES IMPLEMENTADAS:
- * 
- * 1. 🏷️ SIGLA DA SECRETARIA:
- *    ❌ Antes: extraía do nome da planilha (pegava parte errada)
- *    ✅ Agora: usa diretamente secretaria.nome do array
- * 
- * 2. 🔤 ORDENAÇÃO ALFABÉTICA:
- *    ❌ Antes: ordenava os dados depois de coletar
- *    ✅ Agora: ordena as secretarias ANTES do processamento
- * 
- * 3. 📊 MAPEAMENTO DE COLUNAS:
- *    ✅ Confirmado: B→B, C→C, D→D, E→E, F→F, G→G, H→H, I→I, J→J, K→K, L→L, N→M
- *    ✅ Início dos dados: linha 5 (CONFIG.LINHA_INICIO_DADOS = 4)
- *    ✅ Data da Inclusão: coluna N (índice 12) da origem
- * 
- * 4. 🧪 NOVAS FUNÇÕES DE TESTE:
- *    • testeMapemantoColunas() - verifica estrutura
- *    • validarEstruturaSecretarias() - testa conectividade
- *    • listarSecretariasOrdenadas() - mostra ordem alfabética
- * 
- * 5. 🔍 VALIDAÇÃO DE DADOS:
- *    ✅ Verificação baseada no campo Nome (não linha vazia)
- *    ✅ Logs detalhados para debug
- *    ✅ Contagem precisa de registros por secretaria
- * ========================================================================
- */
-
-// ========================================================================
-// FUNÇÕES COMPLEMENTARES PARA FINALIZAR O SISTEMA
-// ========================================================================
-
-/**
-* Função para testar uma secretaria específica
-*/
-function testarSecretariaEspecifica() {
-    const opcoes = PLANILHAS_SECRETARIAS.map((s, i) => `${i + 1} - ${s.nome}`);
-    
-    const resposta = SpreadsheetApp.getUi().prompt(
-        "🧪 Testar Secretaria Específica",
-        `Digite o número da secretaria (1-${PLANILHAS_SECRETARIAS.length}):\n\n` + opcoes.join("\n"),
-        SpreadsheetApp.getUi().ButtonSet.OK_CANCEL
-    );
-    
-    if (resposta.getSelectedButton() === SpreadsheetApp.getUi().Button.OK) {
-        const numero = parseInt(resposta.getResponseText());
-        
-        if (numero >= 1 && numero <= PLANILHAS_SECRETARIAS.length) {
-            const secretaria = PLANILHAS_SECRETARIAS[numero - 1];
-            executarTesteDetalhado(secretaria);
-        } else {
-            SpreadsheetApp.getUi().alert("⚠️ Número inválido", "Digite um número entre 1 e " + PLANILHAS_SECRETARIAS.length);
-        }
-    }
-}
-
-/**
-* Executa teste detalhado de uma secretaria
-*/
-function executarTesteDetalhado(secretaria) {
-    Logger.log(`🔍 === TESTE DETALHADO: ${secretaria.nome} ===`);
-    
-    try {
-        // Testar processamento
-        const resultado = processarSecretariaOtimizada(secretaria);
-        
-        let relatorio = `
-🧪 TESTE DETALHADO - ${secretaria.nome}
-
-📋 INFORMAÇÕES BÁSICAS:
-• ID da Planilha: ${secretaria.id}
-• Sigla Oficial: ${secretaria.nome}
-• Status: ${resultado.sucesso ? '✅ Sucesso' : '❌ Erro'}
-
-`;
-
-        if (resultado.sucesso) {
-            relatorio += `
-📊 DADOS PROCESSADOS:
-• Registros encontrados: ${resultado.dados.length}
-• Sigla usada: ${resultado.siglaSecretaria}
-
-`;
-
-            if (resultado.dados.length > 0) {
-                const primeiroRegistro = resultado.dados[0];
-                relatorio += `
-🔍 PRIMEIRO REGISTRO (EXEMPLO):
-• Nome: ${primeiroRegistro[1]}
-• Prontuário: ${primeiroRegistro[2]}
-• Formação: ${primeiroRegistro[3]}
-• Área: ${primeiroRegistro[4]}
-• Cargo: ${primeiroRegistro[5]}
-
-`;
-            }
-        } else {
-            relatorio += `
-❌ ERRO ENCONTRADO:
-${resultado.erro}
-
-`;
-        }
-
-        relatorio += `📅 Teste realizado em: ${new Date().toLocaleString('pt-BR')}`;
-
-        SpreadsheetApp.getUi().alert(
-            `🧪 Teste - ${secretaria.nome}`,
-            relatorio,
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-
-    } catch (erro) {
-        Logger.log(`❌ Erro no teste detalhado: ${erro.toString()}`);
-        SpreadsheetApp.getUi().alert(
-            "❌ Erro no Teste",
-            `Erro ao testar ${secretaria.nome}:\n${erro.toString()}`,
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-    }
-}
-
-/**
-* Comparar dados antes e depois (para validação)
-*/
-function compararDadosAntesDepois() {
-    const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
-    const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
-    
-    if (!abaCentral || abaCentral.getLastRow() <= 1) {
-        SpreadsheetApp.getUi().alert(
-            "ℹ️ Sem Dados para Comparar",
-            "Execute uma importação primeiro.",
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-        return;
-    }
-
-    const totalLinhas = abaCentral.getLastRow();
-    const totalRegistros = totalLinhas - 1;
-    
-    // Analisar primeira e última secretaria para verificar ordenação
-    const primeiraLinha = abaCentral.getRange(2, 1, 1, 13).getValues()[0];
-    const ultimaLinha = abaCentral.getRange(totalLinhas, 1, 1, 13).getValues()[0];
-    
-    // Contar registros por secretaria
-    const dadosSecretaria = abaCentral.getRange(2, 1, totalRegistros, 1).getValues();
-    const contadorSecretarias = {};
-    
-    dadosSecretaria.forEach(linha => {
-        const secretaria = linha[0] || "NÃO IDENTIFICADA";
-        contadorSecretarias[secretaria] = (contadorSecretarias[secretaria] || 0) + 1;
-    });
-
-    const secretariasEncontradas = Object.keys(contadorSecretarias).sort();
-
-    let relatorio = `
-🔍 ANÁLISE DE DADOS ATUAIS
-
-📊 ESTATÍSTICAS:
-• Total de registros: ${totalRegistros}
-• Secretarias encontradas: ${secretariasEncontradas.length}
-
-🔤 VERIFICAÇÃO DE ORDENAÇÃO:
-• Primeira secretaria: ${primeiraLinha[0]}
-• Última secretaria: ${ultimaLinha[0]}
-• Ordenação alfabética: ${secretariasEncontradas[0] === primeiraLinha[0] ? '✅ Correta' : '⚠️ Verificar'}
-
-🏢 SECRETARIAS ENCONTRADAS (${secretariasEncontradas.length}):
-${secretariasEncontradas.map(s => `• ${s}: ${contadorSecretarias[s]} registros`).join('\n')}
-
-📋 EXEMPLO DO PRIMEIRO REGISTRO:
-• Secretaria: ${primeiraLinha[0]}
-• Nome: ${primeiraLinha[1]}
-• Prontuário: ${primeiraLinha[2]}
-• Formação: ${primeiraLinha[3]}
-
-`;
-
-    Logger.log(relatorio);
-    
-    SpreadsheetApp.getUi().alert(
-        "🔍 Análise de Dados",
-        relatorio,
-        SpreadsheetApp.getUi().ButtonSet.OK
-    );
-}
-
-/**
-* Função para corrigir dados existentes (se necessário)
-*/
-function corrigirDadosExistentes() {
-    const resposta = SpreadsheetApp.getUi().alert(
-        "🔧 Corrigir Dados Existentes",
-        "Esta função vai:\n\n• Verificar dados atuais\n• Identificar problemas\n• Aplicar correções necessárias\n\nDeseja continuar?",
-        SpreadsheetApp.getUi().ButtonSet.YES_NO
-    );
-    
-    if (resposta === SpreadsheetApp.getUi().Button.YES) {
-        try {
-            const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
-            const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
-            
-            if (!abaCentral || abaCentral.getLastRow() <= 1) {
-                SpreadsheetApp.getUi().alert("ℹ️ Nenhum dado para corrigir");
-                return;
-            }
-
-            const totalLinhas = abaCentral.getLastRow();
-            const totalRegistros = totalLinhas - 1;
-            
-            // Ler todos os dados
-            const todosDados = abaCentral.getRange(2, 1, totalRegistros, CABECALHOS_CENTRAL.length).getValues();
-            
-            // Ordenar alfabeticamente por secretaria
-            todosDados.sort((a, b) => {
-                const secretariaA = (a[0] || "").toString().toUpperCase();
-                const secretariaB = (b[0] || "").toString().toUpperCase();
-                return secretariaA.localeCompare(secretariaB);
-            });
-            
-            // Reescrever dados ordenados
-            abaCentral.getRange(2, 1, totalRegistros, CABECALHOS_CENTRAL.length).setValues(todosDados);
-            
-            // Aplicar formatação brasileira
-            aplicarFormatacaoOtimizada(abaCentral, totalLinhas);
-            
-            SpreadsheetApp.getUi().alert(
-                "✅ Correção Concluída",
-                `Dados reordenados alfabeticamente!\n\n📊 ${totalRegistros} registros processados\n🔤 Ordenação por secretaria aplicada`,
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-            
-        } catch (erro) {
-            Logger.log(`❌ Erro na correção: ${erro.toString()}`);
-            SpreadsheetApp.getUi().alert(
-                "❌ Erro na Correção",
-                "Ocorreu um erro durante a correção dos dados.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-        }
-    }
-}
-
-/**
-* Menu atualizado com todas as funções
-*/
-function criarMenuCompletoCorrigido() {
-    const ui = SpreadsheetApp.getUi();
-    
-    ui.createMenu("🏛️ Banco de Talentos v3.1")
-        .addItem("🔄 Importar Dados", "iniciarImportacaoManual")
-        .addSeparator()
-        .addItem("📊 Atualizar Secretaria Específica", "atualizarSecretariaEspecifica")
-        .addItem("🔍 Verificar Dados Existentes", "verificarDadosExistentes")
-        .addItem("🔧 Corrigir Dados Existentes", "corrigirDadosExistentes")
-        .addItem("🎨 Aplicar Formatação Brasileira", "aplicarFormatacaoBrasileira")
-        .addItem("📅 Corrigir Formato de Datas", "corrigirFormatoDatas")
-        .addItem("🔲 Aplicar Cores e Bordas", "aplicarCoresEBordas")
-        .addItem("📝 Aplicar Ajuste de Texto", "aplicarAjusteTexto")
-        .addSeparator()
-        .addSubMenu(ui.createMenu("🧪 Testes e Debug")
-            .addItem("🧪 Testar Mapeamento", "testeMapemantoColunas")
-            .addItem("🔍 Validar Estruturas", "validarEstruturaSecretarias")
-            .addItem("🎯 Testar Secretaria Específica", "testarSecretariaEspecifica")
-            .addItem("📊 Comparar Dados", "compararDadosAntesDepois")
-            .addItem("🔤 Listar Secretarias Ordenadas", "listarSecretariasOrdenadas")
-            .addItem("🧹 Limpar Logs", "limparLogs"))
-        .addSeparator()
-        .addItem("📈 Relatório Completo", "gerarRelatorioCompleto")
-        .addItem("🧹 Limpar e Reiniciar", "limparEReiniciar")
-        .addSeparator()
-        .addItem("ℹ️ Sobre o Sistema", "exibirSobreCorrigido")
-        .addToUi();
-}
-
-/**
-* Informações sobre a versão corrigida
-*/
-function exibirSobreCorrigido() {
-    const sobre = `
-🏛️ SISTEMA BANCO DE TALENTOS v3.1 CORRIGIDO
-Programa Governo Eficaz - Santana de Parnaíba
-
-🔧 CORREÇÕES IMPLEMENTADAS:
-• ✅ Sigla das secretarias: usa array PLANILHAS_SECRETARIAS
-• ✅ Mapeamento correto: B→B, C→C, D→D, etc.
-• ✅ Ordenação alfabética: antes do processamento
-• ✅ Data da Inclusão: coluna N corretamente mapeada
-• ✅ Início dos dados: linha 5 confirmada
-• ✅ Formatação brasileira: DD/MM/YYYY, Calibri 10, cores alternadas, bordas, texto ajustado
-
-🧪 FERRAMENTAS DE TESTE:
-• 🧪 Testar Mapeamento - verifica estrutura de colunas
-• 🔍 Validar Estruturas - testa conectividade com secretarias
-• 🎯 Testar Secretaria Específica - análise individual
-• 📊 Comparar Dados - analisa dados existentes
-• 🔧 Corrigir Dados Existentes - reordena se necessário
-
-⚡ PERFORMANCE OTIMIZADA:
-• Processamento em lotes de 5 secretarias
-• Ordenação prévia das secretarias
-• Logs detalhados para debug
-• Recuperação automática de erros
-
-🎨 FORMATAÇÃO BRASILEIRA:
-• Fonte: Calibri 10 em toda a planilha
-• Data: DD/MM/YYYY (formato brasileiro)
-• Alinhamento: centralizado vertical e horizontal
-• Texto: quebra de linha ativada, altura ajustada automaticamente
-• Cores alternadas: #ffffff (linhas pares) e #ebeff1 (linhas ímpares)
-• Bordas: todas as bordas, cor #ffffff, estilo SOLID_MEDIUM
-• Larguras personalizadas: A(66), B(257), C(68), D(108), E(103), F(168), G(97), H(88), I(76), J(256), K(125), L(170), M(88)
-
-📊 MAPEAMENTO DE COLUNAS CONFIRMADO:
-Origem → Destino
-B (Nome) → B (Nome)
-C (Prontuário) → C (Prontuário) 
-D (Formação) → D (Formação)
-E (Área) → E (Área)
-F (Cargo) → F (Cargo)
-G (CC/FE) → G (CC/FE)
-H (Função) → H (Função)
-I (Readaptado) → I (Readaptado)
-J (Justificativa) → J (Justificativa)
-K (Ação) → K (Ação)
-L (Condicionalidade) → L (Condicionalidade)
-N (Data da Inclusão) → M (Data da Inclusão)
-
-🎯 COMO USAR A VERSÃO CORRIGIDA:
-1. Execute "Testar Mapeamento" para verificar estrutura
-2. Use "Validar Estruturas" para testar conectividade
-3. Execute "Importar Dados" para processamento completo
-4. Use "Aplicar Formatação Brasileira" para formatação personalizada
-5. Use "Comparar Dados" para validar resultados
-
-📞 SUPORTE TÉCNICO:
-📧 sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br
-📱 4622-7500 - 8819 / 8644 / 7574
-
-🚀 Versão 3.1 - Problemas Corrigidos!
-📅 ${new Date().toLocaleDateString('pt-BR')}
-    `;
-    
-    SpreadsheetApp.getUi().alert(
-        "ℹ️ Sistema v3.1 - Corrigido",
-        sobre,
-        SpreadsheetApp.getUi().ButtonSet.OK
-    );
-}
-
-// ========================================================================
-// FUNÇÕES PRINCIPAIS DO MENU (QUE ESTAVAM FALTANDO)
-// ========================================================================
-
-/**
-* Inicia importação manual com confirmação
-*/
-function iniciarImportacaoManual() {
-    const resposta = SpreadsheetApp.getUi().alert(
-        "🔄 Iniciar Importação",
-        `Deseja importar dados de todas as ${PLANILHAS_SECRETARIAS.length} secretarias?\n\n⏱️ Tempo estimado: 3-5 minutos\n📊 Os dados serão ordenados alfabeticamente por secretaria`,
-        SpreadsheetApp.getUi().ButtonSet.YES_NO
-    );
-    
-    if (resposta === SpreadsheetApp.getUi().Button.YES) {
-        importarBancoDeTalentosOtimizado();
-    }
-}
-
-/**
-* Cria lotes de planilhas para processamento
-*/
 function criarLotes(planilhas, tamanhoLote) {
-    const lotes = [];
-    for (let i = 0; i < planilhas.length; i += tamanhoLote) {
+    var lotes = [];
+    for (var i = 0; i < planilhas.length; i += tamanhoLote) {
         lotes.push(planilhas.slice(i, i + tamanhoLote));
     }
     return lotes;
 }
 
-/**
-* Processa um lote de secretarias
-*/
 function processarLoteSecretarias(lote, numeroLote) {
-    Logger.log(`📦 Processando lote ${numeroLote} com ${lote.length} planilhas`);
+    Logger.log("📦 Processando lote " + numeroLote + " com " + lote.length + " planilhas");
     
-    const dadosLote = [];
-    const errosLote = [];
-    let processadas = 0;
+    var dadosLote = [];
+    var errosLote = [];
+    var processadas = 0;
     
-    lote.forEach((secretaria, indice) => {
+    for (var i = 0; i < lote.length; i++) {
+        var secretaria = lote[i];
         try {
-            const resultado = processarSecretariaOtimizada(secretaria);
+            var resultado = processarSecretariaOtimizada(secretaria);
             
             if (resultado.sucesso) {
-                dadosLote.push(...resultado.dados);
+                dadosLote = dadosLote.concat(resultado.dados);
                 processadas++;
-                Logger.log(`✅ ${resultado.siglaSecretaria}: ${resultado.dados.length} registros`);
+                Logger.log("✅ " + resultado.siglaSecretaria + ": " + resultado.dados.length + " registros");
             } else {
-                errosLote.push(`${secretaria.nome}: ${resultado.erro}`);
-                Logger.log(`❌ ${secretaria.nome}: ${resultado.erro}`);
+                errosLote.push(secretaria.nome + ": " + resultado.erro);
+                Logger.log("❌ " + secretaria.nome + ": " + resultado.erro);
             }
             
         } catch (erro) {
-            const mensagemErro = `${secretaria.nome}: ${erro.toString()}`;
+            var mensagemErro = secretaria.nome + ": " + erro.toString();
             errosLote.push(mensagemErro);
-            Logger.log(`💥 ${mensagemErro}`);
+            Logger.log("💥 " + mensagemErro);
         }
         
-        // Micro pausa entre planilhas do mesmo lote
         Utilities.sleep(200);
-    });
+    }
     
     return {
         dados: dadosLote,
@@ -986,836 +847,112 @@ function processarLoteSecretarias(lote, numeroLote) {
     };
 }
 
-/**
-* Prepara planilha central
-*/
-function prepararPlanilhaCentral() {
-    const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
-    let abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
-    
-    if (!abaCentral) {
-        Logger.log(`📋 Criando aba "${CONFIG.ABA_CENTRAL}"`);
-        abaCentral = planilhaCentral.insertSheet(CONFIG.ABA_CENTRAL);
-    }
-    
-    // Limpar e configurar cabeçalhos
-    abaCentral.clear();
-    const rangeCabecalho = abaCentral.getRange(1, 1, 1, CABECALHOS_CENTRAL.length);
-    rangeCabecalho.setValues([CABECALHOS_CENTRAL]);
-    
-    // Formatação do cabeçalho com padrões brasileiros
-    rangeCabecalho
-        .setBackground("#1f4e79")
-        .setFontColor("#ffffff")
-        .setFontWeight("bold")
-        .setFontFamily("Calibri")
-        .setFontSize(10)
-        .setHorizontalAlignment("center")
-        .setVerticalAlignment("middle")
-        .setWrap(true)
-        .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
-    
-    abaCentral.setFrozenRows(1);
-    
-    return { planilhaCentral, abaCentral };
-}
-
-/**
-* Mostra progresso durante processamento
-*/
-function mostrarProgresso(loteAtual, totalLotes, tamanheLote) {
-    const progresso = `
-🔄 PROCESSANDO DADOS
-
-📊 Progresso: Lote ${loteAtual} de ${totalLotes}
-📁 Planilhas neste lote: ${tamanheLote}
-⏱️ Aguarde...
-
-${loteAtual === 1 ? '🚀 Iniciando processamento...' : ''}
-${loteAtual === totalLotes ? '🏁 Lote final - quase pronto!' : ''}
-    `;
-    
-    // Usar toast para não interromper
-    SpreadsheetApp.getActive().toast(
-        `Processando lote ${loteAtual}/${totalLotes}...`, 
-        "🔄 Importando Dados", 
-        5
-    );
-    
-    Logger.log(`📊 Progresso: ${loteAtual}/${totalLotes} - ${tamanheLote} planilhas`);
-}
-
-/**
-* Converte data para formato brasileiro DD/MM/YYYY
-*/
 function formatarDataBrasileira(data) {
     if (!data || data === "" || data === null) {
         return "";
     }
     
     try {
-        // Se já é uma string no formato correto, retorna
         if (typeof data === "string" && data.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
             return data;
         }
         
-        // Se é um objeto Date, converte
-        let dataObj;
+        var dataObj;
         if (data instanceof Date) {
             dataObj = data;
         } else {
-            // Tenta converter string para Date
             dataObj = new Date(data);
         }
         
-        // Verifica se a data é válida
         if (isNaN(dataObj.getTime())) {
             return "";
         }
         
-        // Formata para DD/MM/YYYY
-        const dia = String(dataObj.getDate()).padStart(2, '0');
-        const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
-        const ano = dataObj.getFullYear();
+        var dia = String(dataObj.getDate()).padStart(2, '0');
+        var mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+        var ano = dataObj.getFullYear();
         
-        return `${dia}/${mes}/${ano}`;
+        return dia + "/" + mes + "/" + ano;
         
     } catch (erro) {
-        Logger.log(`⚠️ Erro ao formatar data: ${erro.toString()}`);
+        Logger.log("⚠️ Erro ao formatar data: " + erro.toString());
         return "";
     }
 }
 
-/**
-* Aplica formatação otimizada com padrões brasileiros
-*/
 function aplicarFormatacaoOtimizada(abaCentral, totalLinhas) {
     if (totalLinhas <= 1) return;
     
     try {
         Logger.log("🎨 Aplicando formatação brasileira...");
         
-        // ========================================================================
-        // CONFIGURAÇÕES DE LARGURA DAS COLUNAS (em pixels)
-        // ========================================================================
-        const largurasColunas = [66, 257, 68, 108, 103, 168, 97, 88, 76, 256, 125, 170, 88];
+        // Larguras das colunas (em pixels)
+        var largurasColunas = [66, 257, 68, 108, 103, 168, 97, 88, 76, 256, 125, 170, 88, 120, 150];
         
-        // Aplicar larguras específicas
-        largurasColunas.forEach((largura, indice) => {
-            abaCentral.setColumnWidth(indice + 1, largura);
-        });
+        for (var i = 0; i < largurasColunas.length; i++) {
+            abaCentral.setColumnWidth(i + 1, largurasColunas[i]);
+        }
         
-        // ========================================================================
-        // FORMATAÇÃO GERAL DA PLANILHA
-        // ========================================================================
-        
-        // Formatação do cabeçalho (linha 1)
-        const rangeCabecalho = abaCentral.getRange(1, 1, 1, CABECALHOS_CENTRAL.length);
-        rangeCabecalho
-            .setBackground("#1f4e79")
-            .setFontColor("#ffffff")
-            .setFontWeight("bold")
-            .setFontFamily("Calibri")
-            .setFontSize(10)
-            .setHorizontalAlignment("center")
-            .setVerticalAlignment("middle");
-        
-        // Formatação dos dados (linhas 2 em diante)
-        const rangeDados = abaCentral.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length);
+        // Formatação dos dados
+        var rangeDados = abaCentral.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length);
         rangeDados
             .setFontFamily("Calibri")
             .setFontSize(10)
             .setHorizontalAlignment("center")
             .setVerticalAlignment("middle")
-            .setWrap(true)
-            .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
+            .setWrap(true);
         
-        // ========================================================================
-        // FORMATAÇÃO ESPECÍFICA DA COLUNA DE DATA (M)
-        // ========================================================================
-        const colunaData = abaCentral.getRange(2, 13, totalLinhas - 1, 1); // Coluna M
-        colunaData.setNumberFormat("dd/mm/yyyy"); // Formato brasileiro DD/MM/YYYY
-        
-        // ========================================================================
-        // FORMATAÇÃO CONDICIONAL E BORDAS
-        // ========================================================================
-        
-        // Aplicar formatação condicional e bordas usando função auxiliar
-        aplicarFormatacaoCondicionalEBordas(abaCentral, totalLinhas);
-        
-        // ========================================================================
-        // CONFIGURAÇÕES ADICIONAIS
-        // ========================================================================
-        
-        // Congelar primeira linha
-        abaCentral.setFrozenRows(1);
-        
-        // Ajustar altura das linhas automaticamente
-        for (let i = 2; i <= totalLinhas; i++) {
-            abaCentral.autoResizeRows(i);
+        // Formatação da coluna de data (M)
+        if (totalLinhas > 1) {
+            var colunaData = abaCentral.getRange(2, 13, totalLinhas - 1, 1);
+            colunaData.setNumberFormat("dd/mm/yyyy");
         }
         
-        // Manter altura fixa para o cabeçalho
-        abaCentral.setRowHeight(1, 25);
+        // Aplicar cores alternadas
+        for (var i = 2; i <= totalLinhas; i++) {
+            var linha = abaCentral.getRange(i, 1, 1, CABECALHOS_CENTRAL.length);
+            var corFundo = (i % 2 === 0) ? "#ffffff" : "#f8f9fa";
+            linha.setBackground(corFundo);
+        }
+        
+        // Destaque na coluna secretaria
+        var colunaSecretaria = abaCentral.getRange(2, 1, totalLinhas - 1, 1);
+        colunaSecretaria.setBackground("#e3f2fd");
+        colunaSecretaria.setFontWeight("bold");
+        
+        // Aplicar bordas
+        var rangeCompleto = abaCentral.getRange(1, 1, totalLinhas, CABECALHOS_CENTRAL.length);
+        rangeCompleto.setBorder(
+            true, true, true, true, true, true,
+            "#cccccc",
+            SpreadsheetApp.BorderStyle.SOLID
+        );
         
         Logger.log("✅ Formatação brasileira aplicada com sucesso!");
-        Logger.log(`📊 Colunas configuradas: ${largurasColunas.join(", ")} pixels`);
-        Logger.log("📅 Formato de data: DD/MM/YYYY (brasileiro)");
-        Logger.log("🔤 Fonte: Calibri 10");
-        Logger.log("🎨 Cores alternadas: #ffffff e #ebeff1");
-        Logger.log("🔲 Bordas: todas as bordas, cor #ffffff, estilo SOLID_MEDIUM");
-        Logger.log("📝 Texto: quebra de linha ativada, altura ajustada automaticamente");
         
     } catch (erro) {
         Logger.log("⚠️ Erro na formatação: " + erro.toString());
     }
 }
 
-/**
-* Exibe resultado otimizado
-*/
 function exibirResultadoOtimizado(relatorio) {
-    const porcentagemSucesso = Math.round((relatorio.secretariasProcessadas / PLANILHAS_SECRETARIAS.length) * 100);
+    var porcentagemSucesso = Math.round((relatorio.secretariasProcessadas / PLANILHAS_SECRETARIAS.length) * 100);
     
-    const mensagem = `
-🎉 IMPORTAÇÃO CONCLUÍDA!
-
-📊 RESULTADOS:
-• Secretarias processadas: ${relatorio.secretariasProcessadas}/${PLANILHAS_SECRETARIAS.length} (${porcentagemSucesso}%)
-• Registros importados: ${relatorio.registrosImportados}
-• Lotes processados: ${relatorio.lotes.length}
-• Duração total: ${relatorio.duracao}s
-
-✨ DADOS ORDENADOS ALFABETICAMENTE POR SECRETARIA
-
-${relatorio.erros.length > 0 ? `⚠️ Erros encontrados: ${relatorio.erros.length}\nConsulte os logs para detalhes.` : '✅ Processo executado sem erros!'}
-
-📅 Concluído em: ${relatorio.fim.toLocaleString('pt-BR')}
-    `;
+    var mensagem = 
+        "🎉 ATUALIZAÇÃO CONCLUÍDA!\n\n" +
+        "📊 RESULTADOS:\n" +
+        "• Secretarias processadas: " + relatorio.secretariasProcessadas + "/" + PLANILHAS_SECRETARIAS.length + " (" + porcentagemSucesso + "%)\n" +
+        "• Registros importados: " + relatorio.registrosImportados + "\n" +
+        "• Duração total: " + relatorio.duracao + "s\n\n" +
+        "✨ DADOS ORDENADOS ALFABETICAMENTE POR SECRETARIA\n\n" +
+        (relatorio.erros.length > 0 ? 
+            "⚠️ Erros encontrados: " + relatorio.erros.length + "\nConsulte os logs para detalhes." : 
+            "✅ Processo executado sem erros!") + 
+        "\n\n📅 Concluído em: " + relatorio.fim.toLocaleString('pt-BR');
     
     SpreadsheetApp.getUi().alert(
         "🏛️ Banco de Talentos - Sucesso!", 
         mensagem,
-        SpreadsheetApp.getUi().ButtonSet.OK
-    );
-}
-
-/**
-* Atualiza apenas uma secretaria específica
-*/
-function atualizarSecretariaEspecifica() {
-    // Criar lista de opções
-    const opcoes = PLANILHAS_SECRETARIAS.map((s, i) => `${i + 1} - ${s.nome}`);
-    
-    const resposta = SpreadsheetApp.getUi().prompt(
-        "📂 Atualizar Secretaria Específica",
-        `Digite o número da secretaria (1-${PLANILHAS_SECRETARIAS.length}):\n\n` + opcoes.join("\n"),
-        SpreadsheetApp.getUi().ButtonSet.OK_CANCEL
-    );
-    
-    if (resposta.getSelectedButton() === SpreadsheetApp.getUi().Button.OK) {
-        const numero = parseInt(resposta.getResponseText());
-        
-        if (numero >= 1 && numero <= PLANILHAS_SECRETARIAS.length) {
-            const secretaria = PLANILHAS_SECRETARIAS[numero - 1];
-            atualizarUmaSecretaria(secretaria);
-        } else {
-            SpreadsheetApp.getUi().alert("⚠️ Número inválido", "Digite um número entre 1 e " + PLANILHAS_SECRETARIAS.length);
-        }
-    }
-}
-
-/**
-* Atualiza dados de uma secretaria específica
-*/
-function atualizarUmaSecretaria(secretaria) {
-    try {
-        Logger.log(`🔄 Atualizando secretaria: ${secretaria.nome}`);
-        
-        const resultado = processarSecretariaOtimizada(secretaria);
-        
-        if (resultado.sucesso) {
-            SpreadsheetApp.getUi().alert(
-                "✅ Secretaria Atualizada",
-                `${resultado.siglaSecretaria}: ${resultado.dados.length} registros processados`,
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-        } else {
-            SpreadsheetApp.getUi().alert(
-                "❌ Erro na Atualização",
-                `Erro ao processar ${secretaria.nome}:\n${resultado.erro}`,
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-        }
-        
-    } catch (erro) {
-        Logger.log(`❌ Erro ao atualizar ${secretaria.nome}: ${erro.toString()}`);
-    }
-}
-
-/**
-* Verifica dados existentes na planilha
-*/
-function verificarDadosExistentes() {
-    try {
-        const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
-        const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
-        
-        if (!abaCentral) {
-            SpreadsheetApp.getUi().alert(
-                "ℹ️ Nenhum Dado Encontrado",
-                "A aba central ainda não foi criada.\nUse 'Importar Dados' primeiro.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-            return;
-        }
-        
-        const totalLinhas = abaCentral.getLastRow();
-        const totalRegistros = Math.max(0, totalLinhas - 1);
-        
-        if (totalRegistros === 0) {
-            SpreadsheetApp.getUi().alert(
-                "ℹ️ Planilha Vazia",
-                "A planilha central não possui dados.\nUse 'Importar Dados' para começar.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-            return;
-        }
-        
-        // Contar registros por secretaria
-        const dadosSecretaria = abaCentral.getRange(2, 1, totalRegistros, 1).getValues();
-        const contadorSecretarias = {};
-        
-        dadosSecretaria.forEach(linha => {
-            const secretaria = linha[0] || "NÃO IDENTIFICADA";
-            contadorSecretarias[secretaria] = (contadorSecretarias[secretaria] || 0) + 1;
-        });
-        
-        // Ordenar secretarias alfabeticamente
-        const secretariasOrdenadas = Object.entries(contadorSecretarias)
-            .sort((a, b) => a[0].localeCompare(b[0]));
-        
-        let relatorio = `
-📊 DADOS EXISTENTES NA PLANILHA
-
-📈 RESUMO GERAL:
-• Total de registros: ${totalRegistros}
-• Secretarias identificadas: ${Object.keys(contadorSecretarias).length}
-
-🏢 DISTRIBUIÇÃO POR SECRETARIA (em ordem alfabética):
-`;
-        
-        secretariasOrdenadas.forEach(([secretaria, quantidade]) => {
-            relatorio += `• ${secretaria}: ${quantidade} registros\n`;
-        });
-        
-        relatorio += `
-📅 Verificação realizada em: ${new Date().toLocaleString('pt-BR')}
-        `;
-        
-        SpreadsheetApp.getUi().alert(
-            "📊 Dados Existentes",
-            relatorio,
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-        
-    } catch (erro) {
-        Logger.log(`❌ Erro na verificação: ${erro.toString()}`);
-        SpreadsheetApp.getUi().alert(
-            "❌ Erro na Verificação",
-            "Ocorreu um erro ao verificar os dados existentes.",
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-    }
-}
-
-/**
-* Gera relatório completo do sistema
-*/
-function gerarRelatorioCompleto() {
-  try {
-    const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
-    const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
-    
-    if (!abaCentral || abaCentral.getLastRow() <= 1) {
-      SpreadsheetApp.getUi().alert(
-        "ℹ️ Relatório Não Disponível",
-        "Execute a importação de dados primeiro.",
-        SpreadsheetApp.getUi().ButtonSet.OK
-      );
-      return;
-    }
-    
-    const totalLinhas = abaCentral.getLastRow();
-    const totalRegistros = totalLinhas - 1;
-    
-    // Pega todos os registros da planilha central
-    const todosOsDados = abaCentral.getRange(2, 1, totalRegistros, CABECALHOS_CENTRAL.length).getValues();
-    
-    let totalLiberacaoImediata = 0;
-    let readaptados = 0;
-    let emComissao = 0;
-    const secretarias = {};
-    
-    todosOsDados.forEach(linha => {
-      const secretaria = linha[0] || "NÃO IDENTIFICADA";
-      const readaptado = (linha[8] || "").toString().toLowerCase();
-      const ccfe = (linha[6] || "").toString().trim();
-      const status = (linha[13] || "").toString().toLowerCase(); // Status da Movimentação (coluna N)
-      
-      // Conta secretarias
-      secretarias[secretaria] = true;
-      
-      // Conta readaptados
-      if (readaptado.includes("sim")) {
-        readaptados++;
-      }
-      
-      // Conta CC/FE
-      if (ccfe) {
-        emComissao++;
-      }
-      
-      // Conta Liberação Imediata
-      if (status.includes("liberação imediata")) {
-        totalLiberacaoImediata++;
-      }
-    });
-    
-    const relatorio = `
-📊 RELATÓRIO SIMPLIFICADO
-
-• Total de registros: ${totalRegistros}
-• Secretarias ativas: ${Object.keys(secretarias).length}
-• Liberação imediata: ${totalLiberacaoImediata}
-• Readaptados: ${readaptados}
-• Em comissão (CC/FE): ${emComissao}
-
-📅 Gerado em: ${new Date().toLocaleString('pt-BR')}
-    `;
-    
-    SpreadsheetApp.getUi().alert(
-      "📊 Relatório Simplificado",
-      relatorio,
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
-    
-  } catch (erro) {
-    Logger.log(`❌ Erro no relatório: ${erro.toString()}`);
-    SpreadsheetApp.getUi().alert(
-      "❌ Erro no Relatório",
-      "Ocorreu um erro ao gerar o relatório.",
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
-  }
-}
-
-/**
-* Limpa dados e reinicia sistema
-*/
-function limparEReiniciar() {
-    const resposta = SpreadsheetApp.getUi().alert(
-        "⚠️ Confirmar Limpeza Total",
-        "Esta ação irá:\n\n• Remover TODOS os dados importados\n• Manter apenas os cabeçalhos\n• Permitir uma importação limpa\n\n❗ Esta ação NÃO pode ser desfeita!\n\nDeseja continuar?",
-        SpreadsheetApp.getUi().ButtonSet.YES_NO
-    );
-    
-    if (resposta === SpreadsheetApp.getUi().Button.YES) {
-        try {
-            const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
-            const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
-            
-            if (abaCentral) {
-                // Limpar tudo exceto cabeçalhos
-                const ultimaLinha = abaCentral.getLastRow();
-                if (ultimaLinha > 1) {
-                    abaCentral.getRange(2, 1, ultimaLinha - 1, abaCentral.getLastColumn()).clearContent();
-                    abaCentral.getRange(2, 1, ultimaLinha - 1, abaCentral.getLastColumn()).clearFormat();
-                }
-                
-                // Reconfigurar cabeçalhos com formatação brasileira
-                const rangeCabecalho = abaCentral.getRange(1, 1, 1, CABECALHOS_CENTRAL.length);
-                rangeCabecalho.setValues([CABECALHOS_CENTRAL]);
-                rangeCabecalho
-                    .setBackground("#1f4e79")
-                    .setFontColor("#ffffff")
-                    .setFontWeight("bold")
-                    .setFontFamily("Calibri")
-                    .setFontSize(10)
-                    .setHorizontalAlignment("center")
-                    .setVerticalAlignment("middle");
-            }
-            
-            SpreadsheetApp.getUi().alert(
-                "✅ Sistema Reiniciado",
-                "Todos os dados foram removidos com sucesso!\n\n🚀 Sistema pronto para nova importação.\n\nUse 'Importar Dados' quando necessário.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-            
-            Logger.log("🧹 Sistema reiniciado - dados limpos");
-            
-        } catch (erro) {
-            Logger.log(`❌ Erro na limpeza: ${erro.toString()}`);
-            SpreadsheetApp.getUi().alert(
-                "❌ Erro na Limpeza",
-                "Ocorreu um erro durante a limpeza dos dados.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-        }
-    }
-}
-
-/**
-* Corrigir formato de datas em planilha existente
-*/
-function corrigirFormatoDatas() {
-    try {
-        const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
-        const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
-        
-        if (!abaCentral) {
-            SpreadsheetApp.getUi().alert(
-                "ℹ️ Aba Não Encontrada",
-                "A aba central não foi encontrada.\nExecute a importação primeiro.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-            return;
-        }
-        
-        const totalLinhas = abaCentral.getLastRow();
-        
-        if (totalLinhas <= 1) {
-            SpreadsheetApp.getUi().alert(
-                "ℹ️ Sem Dados",
-                "Não há dados para corrigir.\nExecute a importação primeiro.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-            return;
-        }
-        
-        // Ler dados da coluna M (Data da Inclusão)
-        const colunaData = abaCentral.getRange(2, 13, totalLinhas - 1, 1);
-        const dadosData = colunaData.getValues();
-        
-        // Converter cada data para formato brasileiro
-        const datasCorrigidas = dadosData.map(linha => {
-            const dataOriginal = linha[0];
-            return [formatarDataBrasileira(dataOriginal)];
-        });
-        
-        // Aplicar as datas corrigidas
-        colunaData.setValues(datasCorrigidas);
-        
-        // Aplicar formatação de data
-        colunaData.setNumberFormat("dd/mm/yyyy");
-        
-        SpreadsheetApp.getUi().alert(
-            "✅ Datas Corrigidas",
-            `Formato de datas corrigido com sucesso!\n\n📊 ${totalLinhas - 1} registros processados\n📅 Formato: DD/MM/YYYY (brasileiro)`,
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-        
-    } catch (erro) {
-        Logger.log(`❌ Erro na correção de datas: ${erro.toString()}`);
-        SpreadsheetApp.getUi().alert(
-            "❌ Erro na Correção",
-            "Ocorreu um erro ao corrigir o formato das datas.",
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-    }
-}
-
-/**
-* Aplicar formatação condicional e bordas (função auxiliar)
-*/
-function aplicarFormatacaoCondicionalEBordas(abaCentral, totalLinhas) {
-    try {
-        Logger.log("🎨 Aplicando formatação condicional e bordas...");
-        
-        // ========================================================================
-        // FORMATAÇÃO CONDICIONAL COM CORES ALTERNADAS
-        // ========================================================================
-        
-        // Aplicar cores alternadas nas linhas de dados
-        for (let i = 2; i <= totalLinhas; i++) {
-            const linha = abaCentral.getRange(i, 1, 1, CABECALHOS_CENTRAL.length);
-            const corFundo = (i % 2 === 0) ? "#ffffff" : "#ebeff1";
-            linha.setBackground(corFundo);
-        }
-        
-        // Garantir que a coluna secretaria mantenha sua cor especial
-        const colunaSecretaria = abaCentral.getRange(2, 1, totalLinhas - 1, 1);
-        colunaSecretaria.setBackground("#e8f4fd");
-        colunaSecretaria.setFontWeight("bold");
-        
-        // ========================================================================
-        // BORDAS E ESTILO
-        // ========================================================================
-        
-        // Aplicar bordas em toda a planilha
-        const rangeCompleto = abaCentral.getRange(1, 1, totalLinhas, CABECALHOS_CENTRAL.length);
-        
-        // Aplicar bordas externas
-        rangeCompleto.setBorder(
-            true, true, true, true, false, false, // bordas externas
-            "#ffffff", // cor da borda
-            SpreadsheetApp.BorderStyle.SOLID_MEDIUM // estilo
-        );
-        
-        // Aplicar bordas internas (grade)
-        rangeCompleto.setBorder(
-            false, false, false, false, true, true, // bordas internas
-            "#ffffff", // cor da borda
-            SpreadsheetApp.BorderStyle.SOLID // estilo mais fino para grade
-        );
-        
-        Logger.log("✅ Formatação condicional e bordas aplicadas!");
-        
-    } catch (erro) {
-        Logger.log("⚠️ Erro na formatação condicional: " + erro.toString());
-    }
-}
-
-/**
-* Aplicar ajuste de texto e quebra de linha
-*/
-function aplicarAjusteTexto() {
-    try {
-        const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
-        const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
-        
-        if (!abaCentral) {
-            SpreadsheetApp.getUi().alert(
-                "ℹ️ Aba Não Encontrada",
-                "A aba central não foi encontrada.\nExecute a importação primeiro.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-            return;
-        }
-        
-        const totalLinhas = abaCentral.getLastRow();
-        
-        if (totalLinhas <= 1) {
-            SpreadsheetApp.getUi().alert(
-                "ℹ️ Sem Dados",
-                "Não há dados para formatar.\nExecute a importação primeiro.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-            return;
-        }
-        
-        Logger.log("📝 Aplicando ajuste de texto e quebra de linha...");
-        
-        // Formatação dos dados (linhas 2 em diante)
-        const rangeDados = abaCentral.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length);
-        rangeDados
-            .setWrap(true)
-            .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP)
-            .setHorizontalAlignment("center")
-            .setVerticalAlignment("middle");
-        
-        // Ajustar altura das linhas automaticamente
-        for (let i = 2; i <= totalLinhas; i++) {
-            abaCentral.autoResizeRows(i);
-        }
-        
-        SpreadsheetApp.getUi().alert(
-            "✅ Ajuste de Texto Aplicado",
-            `Ajuste de texto e quebra de linha aplicados com sucesso!\n\n📊 ${totalLinhas - 1} registros formatados\n📝 Quebra de linha: ativada\n📏 Altura das linhas: ajustada automaticamente`,
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-        
-    } catch (erro) {
-        Logger.log(`❌ Erro no ajuste de texto: ${erro.toString()}`);
-        SpreadsheetApp.getUi().alert(
-            "❌ Erro no Ajuste",
-            "Ocorreu um erro ao aplicar o ajuste de texto.",
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-    }
-}
-
-/**
-* Aplicar apenas cores alternadas e bordas
-*/
-function aplicarCoresEBordas() {
-    try {
-        const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
-        const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
-        
-        if (!abaCentral) {
-            SpreadsheetApp.getUi().alert(
-                "ℹ️ Aba Não Encontrada",
-                "A aba central não foi encontrada.\nExecute a importação primeiro.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-            return;
-        }
-        
-        const totalLinhas = abaCentral.getLastRow();
-        
-        if (totalLinhas <= 1) {
-            SpreadsheetApp.getUi().alert(
-                "ℹ️ Sem Dados",
-                "Não há dados para formatar.\nExecute a importação primeiro.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-            return;
-        }
-        
-        // Aplicar formatação condicional e bordas
-        aplicarFormatacaoCondicionalEBordas(abaCentral, totalLinhas);
-        
-        SpreadsheetApp.getUi().alert(
-            "✅ Cores e Bordas Aplicadas",
-            `Formatação condicional e bordas aplicadas com sucesso!\n\n📊 ${totalLinhas - 1} registros formatados\n🎨 Cores alternadas: #ffffff e #ebeff1\n🔲 Bordas: todas as bordas, cor #ffffff`,
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-        
-    } catch (erro) {
-        Logger.log(`❌ Erro na formatação: ${erro.toString()}`);
-        SpreadsheetApp.getUi().alert(
-            "❌ Erro na Formatação",
-            "Ocorreu um erro ao aplicar cores e bordas.",
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-    }
-}
-
-/**
-* Aplicar formatação brasileira em planilha existente
-*/
-function aplicarFormatacaoBrasileira() {
-    try {
-        const planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
-        const abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
-        
-        if (!abaCentral) {
-            SpreadsheetApp.getUi().alert(
-                "ℹ️ Aba Não Encontrada",
-                "A aba central não foi encontrada.\nExecute a importação primeiro.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-            return;
-        }
-        
-        const totalLinhas = abaCentral.getLastRow();
-        
-        if (totalLinhas <= 1) {
-            SpreadsheetApp.getUi().alert(
-                "ℹ️ Sem Dados",
-                "Não há dados para formatar.\nExecute a importação primeiro.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
-            return;
-        }
-        
-        // Aplicar formatação brasileira
-        aplicarFormatacaoOtimizada(abaCentral, totalLinhas);
-        
-        SpreadsheetApp.getUi().alert(
-            "✅ Formatação Aplicada",
-            `Formatação brasileira aplicada com sucesso!\n\n📊 ${totalLinhas - 1} registros formatados\n🔤 Fonte: Calibri 10\n📅 Data: DD/MM/YYYY\n📝 Texto: ajustado automaticamente\n🎨 Cores alternadas: #ffffff e #ebeff1\n🔲 Bordas: todas as bordas, cor #ffffff\n📏 Colunas: larguras personalizadas`,
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-        
-    } catch (erro) {
-        Logger.log(`❌ Erro na formatação: ${erro.toString()}`);
-        SpreadsheetApp.getUi().alert(
-            "❌ Erro na Formatação",
-            "Ocorreu um erro ao aplicar a formatação brasileira.",
-            SpreadsheetApp.getUi().ButtonSet.OK
-        );
-    }
-}
-
-/**
-* Limpar logs para debug
-*/
-function limparLogs() {
-    console.clear();
-    Logger.log("🧹 Logs limpos - " + new Date().toLocaleString('pt-BR'));
-    SpreadsheetApp.getActive().toast("Logs limpos!", "🧹 Debug", 2);
-}
-
-/**
-* Validação da configuração do sistema
-*/
-function validarConfiguracao() {
-    Logger.log("🔍 === VALIDAÇÃO DO SISTEMA ===");
-    
-    const problemas = [];
-    
-    // Validar IDs das planilhas
-    if (PLANILHAS_SECRETARIAS.length !== 23) {
-        problemas.push(`❌ Esperadas 23 planilhas, encontradas ${PLANILHAS_SECRETARIAS.length}`);
-    }
-    
-    // Validar cabeçalhos
-    if (CABECALHOS_CENTRAL.length !== 13) {
-        problemas.push(`❌ Esperados 13 cabeçalhos, encontrados ${CABECALHOS_CENTRAL.length}`);
-    }
-    
-    // Validar configurações
-    if (CONFIG.LOTE_SIZE < 1 || CONFIG.LOTE_SIZE > 10) {
-        problemas.push(`❌ Tamanho do lote inválido: ${CONFIG.LOTE_SIZE}`);
-    }
-    
-    if (problemas.length === 0) {
-        Logger.log("✅ Sistema validado - configuração correta");
-        return true;
-    } else {
-        Logger.log("❌ Problemas encontrados:");
-        problemas.forEach(p => Logger.log(p));
-        return false;
-    }
-}
-
-/**
-* Função de inicialização atualizada
-*/
-function onOpen() {
-    try {
-        criarMenuCompletoCorrigido();
-        Logger.log("✅ Menu completo corrigido criado");
-        
-        // Mostrar instruções da versão corrigida
-        mostrarInstrucoesCorrigidas();
-        
-    } catch (erro) {
-        Logger.log("❌ Erro na inicialização v3.1: " + erro.toString());
-    }
-}
-
-/**
-* Mostra instruções da versão corrigida
-*/
-function mostrarInstrucoesCorrigidas() {
-    const instrucoes = `
-🏛️ SISTEMA BANCO DE TALENTOS - VERSÃO 3.1 CORRIGIDA
-
-🔧 CORREÇÕES IMPLEMENTADAS:
-• ✅ Sigla das secretarias: agora usa o array PLANILHAS_SECRETARIAS
-• ✅ Mapeamento de colunas: corrigido conforme especificação
-• ✅ Ordenação alfabética: secretarias sempre ordenadas
-• ✅ Início dos dados: confirmado linha 5 (índice 4)
-
-🧪 NOVAS OPÇÕES DE TESTE:
-• "Testar Mapeamento" - verifica se as colunas estão corretas
-• "Validar Estruturas" - testa todas as secretarias
-• "Listar Secretarias Ordenadas" - mostra ordem alfabética
-
-⚡ COMO USAR:
-1. Execute "Testar Mapeamento" primeiro para verificar
-2. Use "Importar Dados" para processamento completo
-3. Dados ficarão ordenados alfabeticamente por secretaria
-
-🎯 VERSÃO 3.1 - PROBLEMAS CORRIGIDOS!
-    `;
-    
-    SpreadsheetApp.getUi().alert(
-        "🎉 Sistema Corrigido - v3.1!", 
-        instrucoes,
         SpreadsheetApp.getUi().ButtonSet.OK
     );
 }
