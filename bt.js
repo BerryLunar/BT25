@@ -114,7 +114,7 @@ var EMAILS_PONTOS_FOCAIS = {
     ],
     "SEMOP (PRIVADA)": ["vitoria.40868@santanadeparnaiba.sp.gov.br"],
     "SEMUTTRANS": ["jailton.34100@santanadeparnaiba.sp.gov.br"],
-    "SMA": ["rubens.26653@santanadeparnaiba.sp.gov.br"],
+    "SMA": ["luana.41331@santanadeparnaiba.sp.gov.br"],
     "SMAFEL": ["diego.35011@santanadeparnaiba.sp.gov.br"],
     "SMCC": ["izabel.30143@santanadeparnaiba.sp.gov.br"],
     "SMCL": [
@@ -151,9 +151,7 @@ var EMAILS_PONTOS_FOCAIS = {
     "SMSM": ["william.14340@santanadeparnaiba.sp.gov.br"],
     "SMSU": ["ana.39251@santanadeparnaiba.sp.gov.br"]
   };
- 
-
-// ========================================================================
+ // ========================================================================
 // MENU PRINCIPAL SIMPLIFICADO
 // ========================================================================
 
@@ -619,6 +617,15 @@ function sincronizarStatus(aba, linha) {
 
 function enviarEmailNotificacao(secretaria, nome, prontuario, status) {
     try {
+        // Lista de status permitidos
+        var statusValidos = ["EM MOVIMENTAÇÃO", "CONCLUIDO", "CANCELADO"];
+        
+        // Se não for um status válido, não faz nada
+        if (statusValidos.indexOf(status) === -1) {
+            Logger.log("⏩ Notificação não enviada. Status '" + status + "' não exige e-mail.");
+            return;
+        }
+
         var emailSecretario = EMAILS_SECRETARIOS[secretaria];
         var emailPontoFocal = EMAILS_PONTOS_FOCAIS[secretaria];
         
@@ -673,29 +680,42 @@ function enviarEmailNotificacao(secretaria, nome, prontuario, status) {
 }
 
 function criarCorpoEmailNotificacao(secretaria, nome, prontuario, status) {
-    return "<div style=\"font-family: Calibri, Arial, sans-serif; line-height: 1.6; color: #333;\">" +
-        "<h2 style=\"color: #1f4e79;\">🏛️ Banco de Talentos - Prefeitura de Santana de Parnaíba</h2>" +
-        "<p><strong>Prezado(a) Gestor(a),</strong></p>" +
-        "<p>Informamos que um servidor vinculado à <strong>" + secretaria + "</strong> encontra-se em processo de movimentação através do Banco de Talentos.</p>" +
-        "<div style=\"background-color: #f8f9fa; padding: 15px; border-left: 4px solid #1f4e79; margin: 20px 0;\">" +
-        "<h3 style=\"margin-top: 0; color: #1f4e79;\">📋 Dados da Movimentação:</h3>" +
-        "<p><strong>• Nome do Servidor:</strong> " + nome + "</p>" +
-        "<p><strong>• Prontuário:</strong> " + prontuario + "</p>" +
-        "<p><strong>• Status Atual:</strong> " + status + "</p>" +
-        "<p><strong>• Secretaria de Origem:</strong> " + secretaria + "</p>" +
-        "</div>" +
-        "<p>Este é um aviso automático do Sistema Banco de Talentos do Programa Governo Eficaz.</p>" +
-        "<p>Para mais informações ou esclarecimentos, entre em contato conosco:</p>" +
-        "<p>📧 <strong>sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br</strong><br>" +
-        "📱 <strong>4622-7500 - 8819 / 8644 / 7574</strong></p>" +
-        "<hr style=\"border: none; border-top: 1px solid #ddd; margin: 30px 0;\">" +
-        "<p style=\"font-size: 12px; color: #666;\">" +
-        "<strong>Atenciosamente,</strong><br>" +
-        "Programa Governo Eficaz<br>" +
-        "Prefeitura de Santana de Parnaíba<br>" +
-        "<em>Sistema automatizado - não responda este e-mail</em>" +
-        "</p>" +
-        "</div>";
+    // Cores de status
+    var corStatus = "#333"; // padrão
+    if (status === "EM MOVIMENTAÇÃO") corStatus = "#d9534f"; // vermelho
+    else if (status === "CONCLUIDO") corStatus = "#5cb85c"; // verde
+    else if (status === "CANCELADO") corStatus = "#f0ad4e"; // laranja
+
+    return `
+    <div style="max-width:600px; margin:auto; font-family: Calibri, Arial, sans-serif; line-height: 1.6; color: #333; font-size:14px;">
+        <h2 style="color: #1f4e79; text-align:center;">🏛️ Banco de Talentos - Prefeitura de Santana de Parnaíba</h2>
+        
+        <p><strong>Prezado(a) Gestor(a),</strong></p>
+        <p>Informamos que um servidor vinculado à <strong>${secretaria}</strong> encontra-se em processo de movimentação através do Banco de Talentos.</p>
+
+        <div style="background-color: #f8f9fa; padding: 15px 20px; border-left: 4px solid #1f4e79; border-radius: 6px; margin: 20px 0;">
+            <h3 style="margin-top:0; color: #1f4e79;">📋 Dados da Movimentação:</h3>
+            <p style="margin:5px 0;">📛 <strong>Nome do Servidor:</strong> ${nome}</p>
+            <p style="margin:5px 0;">🆔 <strong>Prontuário:</strong> ${prontuario}</p>
+            <p style="margin:5px 0;">⚡ <strong>Status Atual:</strong> <span style="color:${corStatus}; font-weight:bold;">${status}</span></p>
+            <p style="margin:5px 0;">📌 <strong>Secretaria de Origem:</strong> ${secretaria}</p>
+        </div>
+
+        <p>Este é um aviso automático do Sistema Banco de Talentos do Programa Governo Eficaz.</p>
+        <p>Para mais informações ou esclarecimentos, entre em contato conosco:</p>
+        <p>📧 <strong>sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br</strong><br>
+           📱 <strong>4622-7500 - 8819 / 8644 / 7574</strong></p>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <p style="font-size: 11px; color: #666; text-align:center;">
+            <strong>Atenciosamente,</strong><br>
+            Programa Governo Eficaz<br>
+            Prefeitura de Santana de Parnaíba<br>
+            <em>Sistema automatizado - não responda este e-mail</em>
+        </p>
+    </div>
+    `;
 }
 
 // ========================================================================
