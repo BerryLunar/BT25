@@ -320,62 +320,209 @@ function executarAutofill(aba, linha, prontuario) {
 
 function sincronizarStatus(aba, linha) {
     try {
-        var secretaria = aba.getRange(linha, 1).getValue();     // A
-        var nome = aba.getRange(linha, 2).getValue();           // B
-        var prontuario = aba.getRange(linha, 3).getValue();     // C
-        var statusNovo = aba.getRange(linha, 6).getValue();     // F
+        var secretaria = (aba.getRange(linha, 1).getValue() || "").toString().trim();     // A
+        var nome = (aba.getRange(linha, 2).getValue() || "").toString().trim();           // B
+        var prontuario = (aba.getRange(linha, 3).getValue() || "").toString().trim();     // C
+        var statusNovo = (aba.getRange(linha, 6).getValue() || "").toString().trim();     // F
 
-        if (!secretaria || !prontuario || !statusNovo) return;
+        Logger.log("🔄 Sincronizando status:");
+        Logger.log("Secretaria: " + secretaria);
+        Logger.log("Nome: " + nome);
+        Logger.log("Prontuário: " + prontuario);
+        Logger.log("Status Novo: " + statusNovo);
 
-        // Status que disparam notificação
-        var statusComEmail = ["Em Andamento", "Concluído", "Cancelado"];
-        if (!statusComEmail.includes(statusNovo)) return;
-
-        // Encontra a planilha da secretaria
-        var infoSecretaria = PLANILHAS_SECRETARIAS.filter(s => s.nome === secretaria)[0];
-        if (!infoSecretaria) return;
-
-        // Atualiza status no PGE (coluna Q = índice 17)
-        try {
-            var planilhaPGE = SpreadsheetApp.openById(infoSecretaria.id);
-            var abaPGE = planilhaPGE.getSheetByName("Planejamento de Gestão Estratégica");
-            if (!abaPGE) return;
-
-            var dadosPGE = abaPGE.getRange(4, 3, abaPGE.getLastRow() - 3, 1).getValues(); // Coluna C
-
-            for (var i = 0; i < dadosPGE.length; i++) {
-                if ((dadosPGE[i][0] || "").toString().trim() === prontuario.toString().trim()) {
-                    abaPGE.getRange(i + 4, 17).setValue(statusNovo); // Coluna Q
-                    break;
-                }
-            }
-        } catch (erro) {
-            Logger.log("❌ Erro ao atualizar PGE: " + erro.toString());
+        if (!secretaria || !prontuario || !statusNovo) {
+            Logger.log("❌ Dados incompletos - cancelando sincronização");
+            return;
         }
 
-        // Envia e-mail de notificação
+        // Status que disparam notificação - CORRIGIDO
+        var statusComEmail = ["Em Andamento", "EM MOVIMENTAÇÃO", "Concluído", "CONCLUÍDO", "Cancelado", "CANCELADO"];
+        if (!statusComEmail.includes(statusNovo)) {
+            Logger.log("⚠️ Status não requer notificação: " + statusNovo);
+            return;
+        }
+
+        // Encontra a planilha da secretaria - MELHORADO
+        var infoSecretaria = PLANILHAS_SECRETARIAS.filter(function(s) { 
+            return s.nome.toUpperCase() === secretaria.toUpperCase(); 
+        })[0];
+        
+        if (!infoSecretaria) {
+            Logger.log("❌ Secretaria não encontrada no mapeamento: " + secretaria);
+            SpreadsheetApp.getActive().toast(
+                "Secretaria '" + secretaria + "' não encontrada no sistema",
+                "⚠️ Aviso",
+                5
+            );
+            return;
+        }
+
+        Logger.log("📋 Secretaria mapeada: " + infoSecretaria.nome + " (ID: " + infoSecretaria.id + ")");
+
+        // Atualiza status na planilha PGE - CORRIGIDO
+        var statusAtualizado = false;
+        try {
+            Logger.log("🔗 Abrindo planilha externa...");
+            var planilhaPGE = SpreadsheetApp.openById(infoSecretaria.id);
+            
+            // Tenta diferentes nomes de aba - FLEXIBILIZADO
+            var possiveisAbas = [
+                "Banco de Talentos (Externo)",
+                "Planejamento de Gestão Estratégica", 
+                "PGE",
+                "Dados"
+            ];
+            
+            var abaPGE = null;
+            for (var i = 0; i < possiveisAbas.length; i++) {
+                try {
+                    abaPGE = planilhaPGE.getSheetByName(possiveisAbas[i]);
+                    if (abaPGE) {
+                        Logger.log("✅ Aba encontrada: " + possiveisAbas[i]);
+                        break;
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+
+            if (!abaPGE) {
+                Logger.log("❌ Nenhuma aba válida encontrada na planilha");
+                SpreadsheetApp.getActive().toast(
+                    "Aba não encontrada na planilha da " + secretaria,
+                    "⚠️ Aviso",
+                    5
+                );
+                // Continua para enviar e-mail mesmo sem atualizar PGE
+            } else {
+                // Procura o prontuário e atualiza status - MELHORADO
+                var ultimaLinha = abaPGE.getLastRow();
+                Logger.log("📊 Última linha da planilha PGE: " + ultimaLinha);
+                
+                if (ultimaLinha >= 4) {
+                    // Busca na coluna C (prontuário) a partir da linha 4
+                    var dadosProntuarios = abaPGE.getRange(4, 3, ultimaLinha - 3, 1).getValues();
+                    
+                    for (var j = 0; j < dadosProntuarios.length; j++) {
+                        var prontuarioPGE = (dadosProntuarios[j][0] || "").toString().trim();
+                        
+                        if (prontuarioPGE === prontuario) {
+                            var linhaAtualizar = j + 4;
+                            
+                            // Verifica se existe coluna de status (tenta várias posições)
+                            var colunasStatus = [14, 15, 16, 17]; // N, O, P, Q
+                            var colunaStatusEncontrada = false;
+                            
+                            for (var k = 0; k < colunasStatus.length; k++) {
+                                try {
+                                    var cabecalho = abaPGE.getRange(1, colunasStatus[k]).getValue();
+                                    if (cabecalho && cabecalho.toString().toLowerCase().includes("status")) {
+                                        abaPGE.getRange(linhaAtualizar, colunasStatus[k]).setValue(statusNovo);
+                                        Logger.log("✅ Status atualizado na coluna " + colunasStatus[k] + " (linha " + linhaAtualizar + ")");
+                                        statusAtualizado = true;
+                                        colunaStatusEncontrada = true;
+                                        break;
+                                    }
+                                } catch (e) {
+                                    continue;
+                                }
+                            }
+                            
+                            if (!colunaStatusEncontrada) {
+                                // Se não encontrou coluna de status, usa coluna Q (17) como padrão
+                                abaPGE.getRange(linhaAtualizar, 17).setValue(statusNovo);
+                                Logger.log("✅ Status atualizado na coluna padrão Q (linha " + linhaAtualizar + ")");
+                                statusAtualizado = true;
+                            }
+                            break;
+                        }
+                    }
+                    
+                    if (!statusAtualizado) {
+                        Logger.log("❌ Prontuário " + prontuario + " não encontrado na planilha PGE");
+                    }
+                }
+            }
+        } catch (erroPGE) {
+            Logger.log("❌ Erro ao atualizar PGE: " + erroPGE.toString());
+            SpreadsheetApp.getActive().toast(
+                "Erro ao acessar planilha da " + secretaria,
+                "⚠️ Aviso",
+                5
+            );
+        }
+
+        // Envia e-mail de notificação - SEMPRE TENTA
+        Logger.log("📧 Iniciando envio de e-mail...");
         enviarEmailNotificacao(secretaria, nome, prontuario, statusNovo);
 
+        // Feedback para o usuário - MELHORADO
+        var mensagem = statusAtualizado ? 
+            "Status \"" + statusNovo + "\" sincronizado com PGE" :
+            "E-mail enviado (PGE não atualizado)";
+            
         SpreadsheetApp.getActive().toast(
-            "Status \"" + statusNovo + "\" sincronizado",
-            "🔄",
-            3
+            mensagem,
+            "🔄 Sincronização",
+            4
         );
+
     } catch (erro) {
-        Logger.log("❌ Erro em sincronizarStatus: " + erro.toString());
+        Logger.log("💥 Erro em sincronizarStatus: " + erro.toString());
+        SpreadsheetApp.getActive().toast(
+            "Erro na sincronização: " + erro.message,
+            "❌ Erro",
+            5
+        );
     }
 }
-
 // ========================================================================
 // ENVIO DE E-MAIL PARA SECRETÁRIOS E PONTOS FOCAIS
 // ========================================================================
 
 function enviarEmailNotificacao(secretaria, nome, prontuario, status) {
     try {
-        var emailSecretario = EMAILS_SECRETARIOS[secretaria];
-        var emailPontoFocal = EMAILS_PONTOS_FOCAIS[secretaria];
+        Logger.log("📨 Preparando envio de e-mail para: " + secretaria);
+        
+        // Normaliza nome da secretaria para busca
+        var secretariaNormalizada = secretaria.toUpperCase().trim();
+        
+        // Busca e-mails
+        var emailSecretario = null;
+        var emailPontoFocal = null;
+        
+        // Procura por correspondência exata ou parcial
+        for (var chave in EMAILS_SECRETARIOS) {
+            if (chave.toUpperCase() === secretariaNormalizada || 
+                secretariaNormalizada.includes(chave.toUpperCase()) ||
+                chave.toUpperCase().includes(secretariaNormalizada)) {
+                emailSecretario = EMAILS_SECRETARIOS[chave];
+                break;
+            }
+        }
+        
+        for (var chave in EMAILS_PONTOS_FOCAIS) {
+            if (chave.toUpperCase() === secretariaNormalizada || 
+                secretariaNormalizada.includes(chave.toUpperCase()) ||
+                chave.toUpperCase().includes(secretariaNormalizada)) {
+                emailPontoFocal = EMAILS_PONTOS_FOCAIS[chave];
+                break;
+            }
+        }
 
-        if (!emailSecretario && !emailPontoFocal) return;
+        Logger.log("📧 E-mail secretário encontrado: " + (emailSecretario || "NÃO"));
+        Logger.log("📧 E-mail ponto focal encontrado: " + (emailPontoFocal ? emailPontoFocal.length + " endereço(s)" : "NÃO"));
+
+        if (!emailSecretario && !emailPontoFocal) {
+            Logger.log("⚠️ Nenhum e-mail encontrado para: " + secretaria);
+            SpreadsheetApp.getActive().toast(
+                "E-mails não cadastrados para " + secretaria,
+                "⚠️ Aviso",
+                5
+            );
+            return;
+        }
 
         var destinatarios = [];
         if (emailSecretario) destinatarios.push(emailSecretario);
@@ -384,32 +531,137 @@ function enviarEmailNotificacao(secretaria, nome, prontuario, status) {
         var assunto = "Banco de Talentos - Movimentação de Servidor (" + status + ")";
         var corpo = criarCorpoEmailNotificacao(secretaria, nome, prontuario, status);
 
+        var emailsEnviados = 0;
+        var emailsFalharam = 0;
+
         for (var i = 0; i < destinatarios.length; i++) {
             try {
+                Logger.log("📤 Enviando para: " + destinatarios[i]);
+                
                 MailApp.sendEmail({
                     to: destinatarios[i],
                     subject: assunto,
                     htmlBody: corpo
                 });
-                Logger.log("📧 E-mail enviado para " + destinatarios[i]);
-            } catch (erro) {
-                Logger.log("❌ Falha ao enviar para " + destinatarios[i] + ": " + erro.toString());
+                
+                Logger.log("✅ E-mail enviado para " + destinatarios[i]);
+                emailsEnviados++;
+                
+                // Pequena pausa entre envios
+                Utilities.sleep(500);
+                
+            } catch (erroEmail) {
+                Logger.log("❌ Falha ao enviar para " + destinatarios[i] + ": " + erroEmail.toString());
+                emailsFalharam++;
             }
         }
 
-        var tipoDestinatario = emailSecretario && emailPontoFocal ? "secretário e ponto focal" :
-                              emailSecretario ? "secretário" : "ponto focal";
+        // Feedback final
+        var mensagemFinal = "";
+        if (emailsEnviados > 0) {
+            mensagemFinal = "E-mail enviado para " + emailsEnviados + " destinatário(s)";
+        }
+        if (emailsFalharam > 0) {
+            mensagemFinal += (mensagemFinal ? " (" + emailsFalharam + " falharam)" : emailsFalharam + " e-mails falharam");
+        }
 
         SpreadsheetApp.getActive().toast(
-            "E-mail enviado para " + tipoDestinatario,
+            mensagemFinal || "Processo concluído",
             "📧 Notificação",
-            3
+            4
         );
+
     } catch (erro) {
-        Logger.log("❌ Erro ao enviar e-mail: " + erro.toString());
+        Logger.log("💥 Erro ao enviar e-mail: " + erro.toString());
+        SpreadsheetApp.getActive().toast(
+            "Erro no envio de e-mail: " + erro.message,
+            "❌ Erro",
+            5
+        );
     }
 }
 
+// ========================================================================
+// FUNÇÃO DE TESTE PARA DEBUG
+// ========================================================================
+
+function testarSincronizacao() {
+    // Use esta função para testar manualmente
+    // Substitua os valores pelos dados do seu teste
+    
+    var secretaria = "SMA";
+    var nome = "TESTE A";
+    var prontuario = "123321";
+    var status = "EM MOVIMENTAÇÃO";
+    
+    Logger.log("🧪 === TESTE MANUAL DE SINCRONIZAÇÃO ===");
+    Logger.log("Dados de teste: " + secretaria + " | " + nome + " | " + prontuario + " | " + status);
+    
+    // Simula a sincronização
+    enviarEmailNotificacao(secretaria, nome, prontuario, status);
+    
+    Logger.log("🧪 === FIM DO TESTE ===");
+}
+
+// ========================================================================
+// FUNÇÃO PARA VERIFICAR ESTRUTURA DA PLANILHA (DEBUG)
+// ========================================================================
+
+function verificarEstruturaPGE() {
+    try {
+        // ID da SMA
+        var idSMA = "1Nc9O1Ha038gKY5LcfxUVClhTq6rsR0zghdSJqfScI6k";
+        
+        var planilha = SpreadsheetApp.openById(idSMA);
+        var aba = planilha.getSheetByName("Planejamento de Gestão Estratégica");
+        
+        if (!aba) {
+            Logger.log("❌ Aba não encontrada!");
+            return;
+        }
+        
+        Logger.log("📋 === ESTRUTURA DA PLANILHA PGE-SMA ===");
+        
+        // Verifica cabeçalhos (linha 1)
+        var ultimaColuna = aba.getLastColumn();
+        var cabecalhos = aba.getRange(1, 1, 1, ultimaColuna).getValues()[0];
+        
+        Logger.log("🏷️ CABEÇALHOS:");
+        for (var i = 0; i < cabecalhos.length; i++) {
+            var letra = String.fromCharCode(65 + i); // A, B, C, etc.
+            Logger.log(letra + " (índice " + (i + 1) + "): " + cabecalhos[i]);
+        }
+        
+        // Verifica dados de teste (a partir da linha 4)
+        var ultimaLinha = aba.getLastRow();
+        Logger.log("📊 Última linha com dados: " + ultimaLinha);
+        
+        if (ultimaLinha >= 4) {
+            Logger.log("🔍 DADOS LINHA 4 (primeira linha de dados):");
+            var dadosLinha4 = aba.getRange(4, 1, 1, ultimaColuna).getValues()[0];
+            
+            for (var j = 0; j < Math.min(dadosLinha4.length, 18); j++) { // Até coluna R
+                var letra = String.fromCharCode(65 + j);
+                Logger.log(letra + ": '" + dadosLinha4[j] + "'");
+            }
+            
+            // Foca no prontuário (coluna C)
+            var prontuario = dadosLinha4[2]; // índice 2 = coluna C
+            Logger.log("👤 Prontuário encontrado: '" + prontuario + "'");
+            
+            // Foca no status atual (coluna Q)
+            if (dadosLinha4.length > 16) {
+                var statusAtual = dadosLinha4[16]; // índice 16 = coluna Q
+                Logger.log("📊 Status atual: '" + statusAtual + "'");
+            }
+        }
+        
+        Logger.log("📋 === FIM DA VERIFICAÇÃO ===");
+        
+    } catch (erro) {
+        Logger.log("❌ Erro ao verificar estrutura: " + erro.toString());
+    }
+}
 // ========================================================================
 // CORPO DO E-MAIL DE NOTIFICAÇÃO
 // ========================================================================
@@ -442,6 +694,7 @@ function criarCorpoEmailNotificacao(secretaria, nome, prontuario, status) {
         </p>
     </div>`;
 }
+
 // ========================================================================
 // FUNÇÃO PRINCIPAL: ATUALIZAR BANCO COMPLETO
 // ========================================================================
