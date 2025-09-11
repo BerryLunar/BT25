@@ -84,7 +84,7 @@ var EMAILS_SECRETARIOS = {
     "SEMEDES": "joao.37097@santanadeparnaiba.sp.gov.br",
     "SEMOP (PRIVADA)": "wellisson.41377@santanadeparnaiba.sp.gov.br",
     "SEMUTTRANS": "moises.32666@santanadeparnaiba.sp.gov.br",
-    "SMA": "natalice.36293@santanadeparnaiba.sp.gov.br",
+    "SMA": "jose.45849@santanadeparnaiba.sp.gov.br",
     "SMAFEL": "ricardo.29338@santanadeparnaiba.sp.gov.br",
     "SMCC": "helio.37195@santanadeparnaiba.sp.gov.br",
     "SMCL": "cleusa.27102@santanadeparnaiba.sp.gov.br",
@@ -120,7 +120,8 @@ var EMAILS_PONTOS_FOCAIS = {
     "SEMOP (PRIVADA)": ["vitoria.40868@santanadeparnaiba.sp.gov.br"],
     "SEMUTTRANS": ["jailton.34100@santanadeparnaiba.sp.gov.br"],
     "SMA": [
-      "luana.41331@santanadeparnaiba.sp.gov.br"
+      "rubens.26653@santanadeparnaiba.sp.gov.br",
+      "vitoria.44738@santanadeparnaiba.sp.gov.br"
     ],
     "SMAFEL": ["diego.35011@santanadeparnaiba.sp.gov.br"],
     "SMCC": ["izabel.30143@santanadeparnaiba.sp.gov.br"],
