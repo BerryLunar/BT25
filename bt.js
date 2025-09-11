@@ -1,16 +1,20 @@
 /**
  * ========================================================================
- * SISTEMA BANCO DE TALENTOS - VERSÃO FINAL CORRIGIDA
+ * SISTEMA BANCO DE TALENTOS
  * Santana de Parnaíba - SP
- * ========================================================================
  * 
- * FUNCIONALIDADES IMPLEMENTADAS:
- * 1. Função "Atualizar Secretaria Específica" corrigida
- * 2. Menu simplificado com apenas 3 opções
- * 3. Autofill na aba "Movimentações 2025"
- * 4. Sincronização de status com PGE das secretarias
- * 5. Envio automático de e-mails para secretários e pontos focais
+ * Funcionalidades:
+ * • Atualização completa ou por secretaria
+ * • Autofill na aba "Movimentações 2025"
+ * • Sincronização automática com PGE
+ * • Envio automático de e-mails ao alterar status
  * 
+ * Notificação é enviada quando o status muda para:
+ *   • Em Andamento
+ *   • Concluído
+ *   • Cancelado
+ * 
+ * ⚠️ IMPORTANTE: Execute "Instalar Gatilhos" uma vez!
  * ========================================================================
  */
 
@@ -50,7 +54,6 @@ var CONFIG = {
     ABA_MOVIMENTACOES: "Movimentações 2025",
     LINHA_INICIO_DADOS: 4,
     LOTE_SIZE: 5,
-    TIMEOUT_POR_LOTE: 30000,
     DELAY_ENTRE_LOTES: 2000,
     MAX_TENTATIVAS: 2
 };
@@ -73,34 +76,36 @@ var CABECALHOS_CENTRAL = [
     "Interesse do Servidor", // O
 ];
 
-// E-mails dos secretários para notificação
+// E-mails dos secretários
 var EMAILS_SECRETARIOS = {
-    "SECOM": "rogerio.05735@santanadeparnaiba.sp.gov.br",
-    "SEMEDES": "rosalia.37356@santanadeparnaiba.sp.gov.br",
-    "SEMOP": "willian.35778@santanadeparnaiba.sp.gov.br",
-    "SEMUTRANS": "mauriceia.13547@santanadeparnaiba.sp.gov.br",
-    "SMA": "joao.37097@santanadeparnaiba.sp.gov.br",
-    "SMAFEL": "wellisson.41377@santanadeparnaiba.sp.gov.br",
-    "SMCC": "moises.32666@santanadeparnaiba.sp.gov.br",
-    "SMCL": "jose.45849@santanadeparnaiba.sp.gov.br",
-    "SMCT": "ricardo.29338@santanadeparnaiba.sp.gov.br",
-    "SMDS": "camila.42179@santanadeparnaiba.sp.gov.br",
+    "ARAT": "rosalia.37356@santanadeparnaiba.sp.gov.br",
+    "DEFESA CIVIL": "rogerio.05735@santanadeparnaiba.sp.gov.br",
+    "SECOM": "marcio.37806@santanadeparnaiba.sp.gov.br",
+    "SEMEDES": "joao.37097@santanadeparnaiba.sp.gov.br",
+    "SEMOP (PRIVADA)": "wellisson.41377@santanadeparnaiba.sp.gov.br",
+    "SEMUTTRANS": "moises.32666@santanadeparnaiba.sp.gov.br",
+    "SMA": "natalice.36293@santanadeparnaiba.sp.gov.br",
+    "SMAFEL": "ricardo.29338@santanadeparnaiba.sp.gov.br",
+    "SMCC": "helio.37195@santanadeparnaiba.sp.gov.br",
+    "SMCL": "cleusa.27102@santanadeparnaiba.sp.gov.br",
+    "SMCT": "valmir.37361@santanadeparnaiba.sp.gov.br",
+    "SMDS": "marcos.45852@santanadeparnaiba.sp.gov.br",
     "SME": "denise.16870@edu.santanadeparnaiba.sp.gov.br",
-    "SMF": "olga.28375@santanadeparnaiba.sp.gov.br",
-    "SMGAED": "pedro.41937@santanadeparnaiba.sp.gov.br",
-    "SMH": "angela.29303@santanadeparnaiba.sp.gov.br",
-    "SMMAP": "juliana.35797@santanadeparnaiba.sp.gov.br",
-    "SMMF": "mariana.37113@santanadeparnaiba.sp.gov.br",
-    "SMNJ": "albaneide.32343@santanadeparnaiba.sp.gov.br",
-    "SMOP": "gerlaine.40923@santanadeparnaiba.sp.gov.br",
-    "SMOU": "simone.43610@santanadeparnaiba.sp.gov.br",
-    "SMS": "wilson.45853@santanadeparnaiba.sp.gov.br",
-    "SMSD": "viviane.26822@santanadeparnaiba.sp.gov.br",
-    "SMSM": "maria.42819@santanadeparnaiba.sp.gov.br",
-    "SMSU": "ricardo.02732@santanadeparnaiba.sp.gov.br"
+    "SMF": "vaumil.46330@santanadeparnaiba.sp.gov.br",
+    "SMGAED": "mauricio.29797@santanadeparnaiba.sp.gov.br",
+    "SMH": "diego.28488@santanadeparnaiba.sp.gov.br",
+    "SMMAP": "veruska.32203@santanadeparnaiba.sp.gov.br",
+    "SMMF": "selma.001ff@santanadeparnaiba.sp.gov.br",
+    "SMNJ": "veronica.32196@santanadeparnaiba.sp.gov.br",
+    "SMOP (PÚBLICA)": "vivian.29442@santanadeparnaiba.sp.gov.br",
+    "SMOU": "wilson.45853@santanadeparnaiba.sp.gov.br",
+    "SMS": "maria.42819@santanadeparnaiba.sp.gov.br",
+    "SMSD (TI)": "ricardo.02732@santanadeparnaiba.sp.gov.br",
+    "SMSM": "mario.29793@santanadeparnaiba.sp.gov.br",
+    "SMSU": "eduardo.43317@santanadeparnaiba.sp.gov.br"
 };
 
-// E-mails dos pontos focais para notificação
+// E-mails dos pontos focais
 var EMAILS_PONTOS_FOCAIS = {
     "ARAT": ["ana.44313@santanadeparnaiba.sp.gov.br"],
     "DEFESA CIVIL": ["carolina.38338@santanadeparnaiba.sp.gov.br"],
@@ -114,7 +119,9 @@ var EMAILS_PONTOS_FOCAIS = {
     ],
     "SEMOP (PRIVADA)": ["vitoria.40868@santanadeparnaiba.sp.gov.br"],
     "SEMUTTRANS": ["jailton.34100@santanadeparnaiba.sp.gov.br"],
-    "SMA": ["luana.41331@santanadeparnaiba.sp.gov.br"],
+    "SMA": [
+      "luana.41331@santanadeparnaiba.sp.gov.br"
+    ],
     "SMAFEL": ["diego.35011@santanadeparnaiba.sp.gov.br"],
     "SMCC": ["izabel.30143@santanadeparnaiba.sp.gov.br"],
     "SMCL": [
@@ -150,18 +157,14 @@ var EMAILS_PONTOS_FOCAIS = {
     "SMSD (TI)": ["felipe.42463@santanadeparnaiba.sp.gov.br"],
     "SMSM": ["william.14340@santanadeparnaiba.sp.gov.br"],
     "SMSU": ["ana.39251@santanadeparnaiba.sp.gov.br"]
-  };
- // ========================================================================
-// MENU PRINCIPAL SIMPLIFICADO
+};
+
+// ========================================================================
+// MENU PRINCIPAL
 // ========================================================================
 
 function onOpen() {
-    try {
-        criarMenuPersonalizado();
-        Logger.log("✅ Menu personalizado criado");
-    } catch (erro) {
-        Logger.log("❌ Erro na inicialização: " + erro.toString());
-    }
+    criarMenuPersonalizado();
 }
 
 function criarMenuPersonalizado() {
@@ -169,6 +172,8 @@ function criarMenuPersonalizado() {
     ui.createMenu("🏛️ Banco de Talentos")
         .addItem("🔄 Atualizar Banco", "importarBancoDeTalentosOtimizado")
         .addItem("📊 Atualizar Secretaria Específica", "atualizarSecretariaEspecifica")
+        .addSeparator()
+        .addItem("⚙️ Instalar Gatilhos", "instalarGatilhos")
         .addSeparator()
         .addItem("ℹ️ Sobre o Sistema", "exibirSobre")
         .addToUi();
@@ -179,21 +184,266 @@ function exibirSobre() {
         "🏛️ SISTEMA BANCO DE TALENTOS\n" +
         "Programa Governo Eficaz - Santana de Parnaíba\n\n" +
         "🎯 COMO USAR:\n" +
-        "• Utilize a função \"Atualizar Secretaria Específica\" para adição mais rápida de dados\n" +
-        "• Para atualização completa dos dados, utilize a função \"Atualizar Banco\"\n" +
-        "• Toda movimentação e seus detalhes devem ser registrados na aba \"Movimentações 2025\"\n" +
-        "• Notificações automáticas serão enviadas para secretários e pontos focais\n\n" +
+        "• Execute \"Instalar Gatilhos\" uma vez após abrir a planilha\n" +
+        "• Use \"Atualizar Secretaria\" para atualizações rápidas\n" +
+        "• Use \"Atualizar Banco\" para sincronização completa\n" +
+        "• Registre movimentações na aba \"Movimentações 2025\"\n\n" +
         "📞 SUPORTE TÉCNICO:\n" +
         "📧 sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br\n" +
         "📱 4622-7500 - 8819 / 8644 / 7574\n\n" +
-        "🚀 Versão 3.2 - Sistema de Notificações Duplas\n" +
-        "📅 10/09/2025";
+        "🚀 Versão Final - Funcionalidade Garantida\n" +
+        "📅 11/09/2025";
     
     SpreadsheetApp.getUi().alert("ℹ️ Sobre o Sistema", sobre, SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
 // ========================================================================
-// FUNÇÃO PRINCIPAL DE IMPORTAÇÃO (ATUALIZAR BANCO)
+// INSTALAR GATILHOS AUTOMÁTICOS
+// ========================================================================
+
+function instalarGatilhos() {
+    try {
+        // Remove gatilhos antigos
+        var triggers = ScriptApp.getProjectTriggers();
+        for (var i = 0; i < triggers.length; i++) {
+            if (triggers[i].getHandlerFunction() === 'onEdit') {
+                ScriptApp.deleteTrigger(triggers[i]);
+            }
+        }
+
+        // Instala novo gatilho
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        ScriptApp.newTrigger('onEdit')
+            .forSpreadsheet(ss)
+            .onEdit()
+            .create();
+
+        SpreadsheetApp.getUi().alert(
+            "✅ Gatilhos Instalados",
+            "As funções automáticas foram ativadas com sucesso!\n\n" +
+            "• Alterações no status serão sincronizadas\n" +
+            "• E-mails serão enviados automaticamente",
+            SpreadsheetApp.getUi().ButtonSet.OK
+        );
+    } catch (erro) {
+        SpreadsheetApp.getUi().alert(
+            "❌ Erro ao instalar gatilhos",
+            "Erro: " + erro.toString(),
+            SpreadsheetApp.getUi().ButtonSet.OK
+        );
+    }
+}
+// ========================================================================
+// FUNÇÃO ONEDIT - AUTOFILL E SINCRONIZAÇÃO DE STATUS
+// ========================================================================
+
+function onEdit(e) {
+    try {
+        if (!e || !e.range) return;
+        
+        var aba = e.range.getSheet();
+        var nomeAba = aba.getName();
+
+        // Apenas reage na aba de movimentações
+        if (nomeAba !== CONFIG.ABA_MOVIMENTACOES) return;
+
+        var linha = e.range.getRow();
+        var coluna = e.range.getColumn();
+
+        // Coluna C (Prontuário) → preenche dados automaticamente
+        if (coluna === 3 && linha >= 3) {
+            executarAutofill(aba, linha, e.value);
+        }
+
+        // Coluna F (Status da Movimentação) → sincroniza e notifica
+        if (coluna === 6 && linha >= 3) {
+            sincronizarStatus(aba, linha);
+        }
+    } catch (erro) {
+        Logger.log("❌ Erro no onEdit: " + erro.toString());
+    }
+}
+
+// ========================================================================
+// AUTOFILL: PREENCHE DADOS AO DIGITAR O PRONTUÁRIO
+// ========================================================================
+
+function executarAutofill(aba, linha, prontuario) {
+    try {
+        var prontuarioLimpo = (prontuario || "").toString().trim();
+        if (!prontuarioLimpo) return;
+
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        var abaBT = ss.getSheetByName(CONFIG.ABA_CENTRAL);
+        if (!abaBT) return;
+
+        var totalLinhas = abaBT.getLastRow();
+        if (totalLinhas <= 1) return;
+
+        var dadosBT = abaBT.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length).getValues();
+        var encontrado = null;
+
+        for (var i = 0; i < dadosBT.length; i++) {
+            var prontuarioBT = (dadosBT[i][2] || "").toString().trim(); // Coluna C
+            if (prontuarioBT === prontuarioLimpo) {
+                encontrado = dadosBT[i];
+                break;
+            }
+        }
+
+        if (encontrado) {
+            aba.getRange(linha, 1).setValue(encontrado[0]); // A: Secretaria
+            aba.getRange(linha, 2).setValue(encontrado[1]); // B: Nome
+            aba.getRange(linha, 4).setValue(encontrado[5]); // D: Cargo Concurso
+            aba.getRange(linha, 5).setValue(encontrado[10]); // E: Ação
+
+            SpreadsheetApp.getActive().toast(
+                "Preenchido: " + encontrado[1],
+                "📋 Autofill",
+                3
+            );
+        } else {
+            SpreadsheetApp.getActive().toast(
+                "Prontuário não encontrado",
+                "⚠️",
+                3
+            );
+        }
+    } catch (erro) {
+        Logger.log("❌ Erro no autofill: " + erro.toString());
+    }
+}
+
+// ========================================================================
+// SINCRONIZAR STATUS COM PGE E ENVIAR NOTIFICAÇÃO
+// ========================================================================
+
+function sincronizarStatus(aba, linha) {
+    try {
+        var secretaria = aba.getRange(linha, 1).getValue();     // A
+        var nome = aba.getRange(linha, 2).getValue();           // B
+        var prontuario = aba.getRange(linha, 3).getValue();     // C
+        var statusNovo = aba.getRange(linha, 6).getValue();     // F
+
+        if (!secretaria || !prontuario || !statusNovo) return;
+
+        // Status que disparam notificação
+        var statusComEmail = ["Em Andamento", "Concluído", "Cancelado"];
+        if (!statusComEmail.includes(statusNovo)) return;
+
+        // Encontra a planilha da secretaria
+        var infoSecretaria = PLANILHAS_SECRETARIAS.filter(s => s.nome === secretaria)[0];
+        if (!infoSecretaria) return;
+
+        // Atualiza status no PGE (coluna Q = índice 17)
+        try {
+            var planilhaPGE = SpreadsheetApp.openById(infoSecretaria.id);
+            var abaPGE = planilhaPGE.getSheetByName("Planejamento de Gestão Estratégica");
+            if (!abaPGE) return;
+
+            var dadosPGE = abaPGE.getRange(4, 3, abaPGE.getLastRow() - 3, 1).getValues(); // Coluna C
+
+            for (var i = 0; i < dadosPGE.length; i++) {
+                if ((dadosPGE[i][0] || "").toString().trim() === prontuario.toString().trim()) {
+                    abaPGE.getRange(i + 4, 17).setValue(statusNovo); // Coluna Q
+                    break;
+                }
+            }
+        } catch (erro) {
+            Logger.log("❌ Erro ao atualizar PGE: " + erro.toString());
+        }
+
+        // Envia e-mail de notificação
+        enviarEmailNotificacao(secretaria, nome, prontuario, statusNovo);
+
+        SpreadsheetApp.getActive().toast(
+            "Status \"" + statusNovo + "\" sincronizado",
+            "🔄",
+            3
+        );
+    } catch (erro) {
+        Logger.log("❌ Erro em sincronizarStatus: " + erro.toString());
+    }
+}
+
+// ========================================================================
+// ENVIO DE E-MAIL PARA SECRETÁRIOS E PONTOS FOCAIS
+// ========================================================================
+
+function enviarEmailNotificacao(secretaria, nome, prontuario, status) {
+    try {
+        var emailSecretario = EMAILS_SECRETARIOS[secretaria];
+        var emailPontoFocal = EMAILS_PONTOS_FOCAIS[secretaria];
+
+        if (!emailSecretario && !emailPontoFocal) return;
+
+        var destinatarios = [];
+        if (emailSecretario) destinatarios.push(emailSecretario);
+        if (emailPontoFocal) destinatarios = destinatarios.concat(emailPontoFocal);
+
+        var assunto = "Banco de Talentos - Movimentação de Servidor (" + status + ")";
+        var corpo = criarCorpoEmailNotificacao(secretaria, nome, prontuario, status);
+
+        for (var i = 0; i < destinatarios.length; i++) {
+            try {
+                MailApp.sendEmail({
+                    to: destinatarios[i],
+                    subject: assunto,
+                    htmlBody: corpo
+                });
+                Logger.log("📧 E-mail enviado para " + destinatarios[i]);
+            } catch (erro) {
+                Logger.log("❌ Falha ao enviar para " + destinatarios[i] + ": " + erro.toString());
+            }
+        }
+
+        var tipoDestinatario = emailSecretario && emailPontoFocal ? "secretário e ponto focal" :
+                              emailSecretario ? "secretário" : "ponto focal";
+
+        SpreadsheetApp.getActive().toast(
+            "E-mail enviado para " + tipoDestinatario,
+            "📧 Notificação",
+            3
+        );
+    } catch (erro) {
+        Logger.log("❌ Erro ao enviar e-mail: " + erro.toString());
+    }
+}
+
+// ========================================================================
+// CORPO DO E-MAIL DE NOTIFICAÇÃO
+// ========================================================================
+
+function criarCorpoEmailNotificacao(secretaria, nome, prontuario, status) {
+    var corStatus = "#333";
+    if (status === "Em Andamento") corStatus = "#d9534f";   // vermelho
+    if (status === "Concluído") corStatus = "#5cb85c";      // verde
+    if (status === "Cancelado") corStatus = "#f0ad4e";      // laranja
+
+    return `
+    <div style="max-width:600px; margin:auto; font-family: Calibri, Arial, sans-serif; line-height: 1.6; color: #333; font-size:14px;">
+        <h2 style="color: #1f4e79; text-align:center;">🏛️ Banco de Talentos</h2>
+        <p><strong>Prezado(a) Gestor(a),</strong></p>
+        <p>Informamos que um servidor vinculado à <strong>${secretaria}</strong> teve seu status atualizado.</p>
+
+        <div style="background-color: #f8f9fa; padding: 15px 20px; border-left: 4px solid #1f4e79; border-radius: 6px; margin: 20px 0;">
+            <h3 style="margin-top:0; color: #1f4e79;">📌 Detalhes:</h3>
+            <p>📛 <strong>Nome:</strong> ${nome}</p>
+            <p>🆔 <strong>Prontuário:</strong> ${prontuario}</p>
+            <p>⚡ <strong>Status:</strong> <span style="color:${corStatus}; font-weight:bold;">${status}</span></p>
+            <p>🏢 <strong>Secretaria:</strong> ${secretaria}</p>
+        </div>
+
+        <p>Este é um aviso automático do Programa Governo Eficaz.</p>
+        <p>📧 sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br | 📱 4622-7500</p>
+
+        <p style="font-size:11px; color:#666; text-align:center;">
+            <em>Sistema automatizado - não responda este e-mail</em>
+        </p>
+    </div>`;
+}
+// ========================================================================
+// FUNÇÃO PRINCIPAL: ATUALIZAR BANCO COMPLETO
 // ========================================================================
 
 function importarBancoDeTalentosOtimizado() {
@@ -205,99 +455,77 @@ function importarBancoDeTalentosOtimizado() {
         erros: [],
         lotes: []
     };
-    
+
     try {
         Logger.log("🚀 === INICIANDO ATUALIZAÇÃO COMPLETA ===");
-        
-        // Preparar planilha central
+
+        // Prepara aba central
         var planilhaCentral = prepararPlanilhaCentral();
         var abaCentral = planilhaCentral.abaCentral;
-        
-        // Ordenar secretarias alfabeticamente
+
+        // Ordena secretarias alfabeticamente
         var secretariasOrdenadas = PLANILHAS_SECRETARIAS.slice().sort(function(a, b) {
             return a.nome.localeCompare(b.nome);
         });
-        
-        // Coletar todos os dados
+
         var todosOsDados = [];
-        
-        // Processar em lotes
         var lotes = criarLotes(secretariasOrdenadas, CONFIG.LOTE_SIZE);
-        
+
         for (var i = 0; i < lotes.length; i++) {
             var lote = lotes[i];
             var numeroLote = i + 1;
             var totalLotes = lotes.length;
-            
-            // Mostrar progresso
+
             SpreadsheetApp.getActive().toast(
-                "Processando lote " + numeroLote + "/" + totalLotes + "...", 
-                "🔄 Atualizando Banco", 
+                "Processando lote " + numeroLote + "/" + totalLotes + "...",
+                "🔄 Atualizando Banco",
                 5
             );
-            
+
             var resultadoLote = processarLoteSecretarias(lote, numeroLote);
-            
-            // Adicionar dados do lote
             todosOsDados = todosOsDados.concat(resultadoLote.dados);
-            
-            // Atualizar relatório
+
             relatorio.secretariasProcessadas += resultadoLote.processadas;
             relatorio.erros = relatorio.erros.concat(resultadoLote.erros);
-            relatorio.lotes.push(resultadoLote);
-            
-            // Pausa entre lotes
+
             if (i < lotes.length - 1) {
                 Utilities.sleep(CONFIG.DELAY_ENTRE_LOTES);
             }
         }
-        
-        // Inserir todos os dados
+
+        // Insere todos os dados
         if (todosOsDados.length > 0) {
-            Logger.log("📝 Inserindo " + todosOsDados.length + " registros ordenados...");
-            
+            Logger.log("📝 Inserindo " + todosOsDados.length + " registros...");
             var range = abaCentral.getRange(2, 1, todosOsDados.length, CABECALHOS_CENTRAL.length);
             range.setValues(todosOsDados);
-            
             relatorio.registrosImportados = todosOsDados.length;
-            
-            // Aplicar formatação
             aplicarFormatacaoOtimizada(abaCentral, todosOsDados.length + 1);
         }
-        
-        // Finalizar
+
+        // Finaliza
         relatorio.fim = new Date();
         relatorio.duracao = Math.round((relatorio.fim - relatorio.inicio) / 1000);
-        
         exibirResultadoOtimizado(relatorio);
-        
-        Logger.log("🎉 === ATUALIZAÇÃO COMPLETA CONCLUÍDA ===");
-        
+
+        Logger.log("🎉 === ATUALIZAÇÃO CONCLUÍDA ===");
     } catch (erro) {
         Logger.log("💥 ERRO CRÍTICO: " + erro.toString());
-        
         SpreadsheetApp.getUi().alert(
             "❌ Erro na Atualização",
-            "Erro crítico durante a atualização:\n\n" + erro.toString(),
+            "Erro crítico:\n\n" + erro.toString(),
             SpreadsheetApp.getUi().ButtonSet.OK
         );
     }
 }
 
 // ========================================================================
-// FUNÇÃO ATUALIZAR SECRETARIA ESPECÍFICA - CORRIGIDA
+// ATUALIZAR UMA SECRETARIA ESPECÍFICA
 // ========================================================================
 
 function atualizarSecretariaEspecifica() {
-    var secretariasOrdenadas = PLANILHAS_SECRETARIAS.slice().sort(function(a, b) {
-        return a.nome.localeCompare(b.nome);
-    });
-    
-    var opcoes = [];
-    for (var i = 0; i < secretariasOrdenadas.length; i++) {
-        opcoes.push((i + 1) + " - " + secretariasOrdenadas[i].nome);
-    }
-    
+    var secretariasOrdenadas = PLANILHAS_SECRETARIAS.slice().sort((a, b) => a.nome.localeCompare(b.nome));
+    var opcoes = secretariasOrdenadas.map((s, i) => `${i + 1} - ${s.nome}`);
+
     var resposta = SpreadsheetApp.getUi().prompt(
         "📂 Atualizar Secretaria Específica",
         "Digite o número da secretaria (1-" + PLANILHAS_SECRETARIAS.length + "):\n\n" + opcoes.join("\n"),
@@ -306,585 +534,221 @@ function atualizarSecretariaEspecifica() {
 
     if (resposta.getSelectedButton() === SpreadsheetApp.getUi().Button.OK) {
         var numero = parseInt(resposta.getResponseText());
-        
-        if (numero >= 1 && numero <= PLANILHAS_SECRETARIAS.length) {
+        if (Number.isInteger(numero) && numero >= 1 && numero <= PLANILHAS_SECRETARIAS.length) {
             var secretaria = secretariasOrdenadas[numero - 1];
             atualizarUmaSecretaria(secretaria);
         } else {
-            SpreadsheetApp.getUi().alert("⚠️ Número inválido", "Digite um número entre 1 e " + PLANILHAS_SECRETARIAS.length);
+            SpreadsheetApp.getUi().alert(
+                "⚠️ Número inválido",
+                "Digite um número entre 1 e " + PLANILHAS_SECRETARIAS.length
+            );
         }
     }
 }
 
 function atualizarUmaSecretaria(secretaria) {
     try {
-        Logger.log("📂 Atualizando secretaria: " + secretaria.nome);
-        
         var ss = SpreadsheetApp.getActiveSpreadsheet();
-        var abaCentral = ss.getSheetByName(CONFIG.ABA_CENTRAL);
-        
-        // Criar aba central se não existir
-        if (!abaCentral) {
-            var planilhaCentral = prepararPlanilhaCentral();
-            abaCentral = planilhaCentral.abaCentral;
-        }
+        var abaCentral = ss.getSheetByName(CONFIG.ABA_CENTRAL) || prepararPlanilhaCentral().abaCentral;
 
-        // Processar dados da secretaria
         var resultado = processarSecretariaOtimizada(secretaria);
 
         if (resultado.sucesso && resultado.dados.length > 0) {
-            // Remover dados antigos da secretaria
             removerDadosSecretaria(abaCentral, secretaria.nome);
-            
-            // Inserir novos dados no final
-            var ultimaLinha = abaCentral.getLastRow();
-            var novaLinha = ultimaLinha + 1;
-            
+            var novaLinha = abaCentral.getLastRow() + 1;
             abaCentral.getRange(novaLinha, 1, resultado.dados.length, CABECALHOS_CENTRAL.length)
-                .setValues(resultado.dados);
-            
-            // Aplicar formatação
+                     .setValues(resultado.dados);
             aplicarFormatacaoOtimizada(abaCentral, novaLinha + resultado.dados.length - 1);
-            
-            // Reordenar dados alfabeticamente
             reordenarDadosAlfabeticamente(abaCentral);
 
             SpreadsheetApp.getUi().alert(
-                "✅ Secretaria Atualizada",
-                resultado.siglaSecretaria + ": " + resultado.dados.length + " registros processados e inseridos com sucesso!",
+                "✅ Sucesso",
+                secretaria.nome + ": " + resultado.dados.length + " registros atualizados.",
                 SpreadsheetApp.getUi().ButtonSet.OK
             );
-            
-            Logger.log("✅ " + secretaria.nome + ": " + resultado.dados.length + " registros atualizados");
-            
-        } else if (resultado.sucesso && resultado.dados.length === 0) {
+        } else if (resultado.dados.length === 0) {
             SpreadsheetApp.getUi().alert(
-                "ℹ️ Sem Dados",
-                secretaria.nome + ": Nenhum registro encontrado para atualização.",
-                SpreadsheetApp.getUi().ButtonSet.OK
+                "ℹ️ Sem dados",
+                secretaria.nome + ": nenhum registro encontrado."
             );
         } else {
             SpreadsheetApp.getUi().alert(
-                "❌ Erro na Atualização",
-                "Erro ao processar " + secretaria.nome + ":\n" + resultado.erro,
-                SpreadsheetApp.getUi().ButtonSet.OK
+                "❌ Erro",
+                "Falha ao processar " + secretaria.nome + ":\n" + resultado.erro
             );
         }
-        
     } catch (erro) {
-        Logger.log("❌ Erro ao atualizar " + secretaria.nome + ": " + erro.toString());
         SpreadsheetApp.getUi().alert(
             "❌ Erro Crítico",
-            "Erro inesperado ao atualizar " + secretaria.nome + ". Consulte os logs.",
-            SpreadsheetApp.getUi().ButtonSet.OK
+            "Erro inesperado: " + erro.toString()
         );
     }
 }
+
+// ========================================================================
+// REMOVER DADOS ANTIGOS DE UMA SECRETARIA
+// ========================================================================
 
 function removerDadosSecretaria(abaCentral, nomeSecretaria) {
     try {
         var totalLinhas = abaCentral.getLastRow();
         if (totalLinhas <= 1) return;
-        
-        // Obter todos os dados
+
         var dados = abaCentral.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length).getValues();
-        
-        // Filtrar dados, removendo a secretaria específica
-        var dadosFiltrados = [];
-        for (var i = 0; i < dados.length; i++) {
-            var secretariaLinha = (dados[i][0] || "").toString().trim();
-            if (secretariaLinha !== nomeSecretaria) {
-                dadosFiltrados.push(dados[i]);
-            }
-        }
-        
-        // Limpar área de dados
+        var dadosFiltrados = dados.filter(function(linha) {
+            return (linha[0] || "").toString().trim() !== nomeSecretaria;
+        });
+
         if (totalLinhas > 1) {
             abaCentral.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length).clearContent();
         }
-        
-        // Reescrever dados filtrados
+
         if (dadosFiltrados.length > 0) {
-            abaCentral.getRange(2, 1, dadosFiltrados.length, CABECALHOS_CENTRAL.length).setValues(dadosFiltrados);
+            abaCentral.getRange(2, 1, dadosFiltrados.length, CABECALHOS_CENTRAL.length)
+                     .setValues(dadosFiltrados);
         }
-        
-        Logger.log("📝 Dados antigos da " + nomeSecretaria + " removidos");
-        
     } catch (erro) {
-        Logger.log("⚠️ Erro ao remover dados da " + nomeSecretaria + ": " + erro.toString());
+        Logger.log("⚠️ Erro ao remover dados: " + erro.toString());
     }
 }
+
+// ========================================================================
+// REORDENAR DADOS POR SECRETARIA (A-Z)
+// ========================================================================
 
 function reordenarDadosAlfabeticamente(abaCentral) {
     try {
         var totalLinhas = abaCentral.getLastRow();
         if (totalLinhas <= 2) return;
-        
-        // Obter todos os dados
+
         var dados = abaCentral.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length).getValues();
-        
-        // Ordenar alfabeticamente por secretaria
         dados.sort(function(a, b) {
-            var secretariaA = (a[0] || "").toString().toUpperCase();
-            var secretariaB = (b[0] || "").toString().toUpperCase();
-            return secretariaA.localeCompare(secretariaB);
+            var sA = (a[0] || "").toString().toUpperCase();
+            var sB = (b[0] || "").toString().toUpperCase();
+            return sA.localeCompare(sB);
         });
-        
-        // Reescrever dados ordenados
         abaCentral.getRange(2, 1, dados.length, CABECALHOS_CENTRAL.length).setValues(dados);
-        
-        Logger.log("📤 Dados reordenados alfabeticamente");
-        
     } catch (erro) {
-        Logger.log("⚠️ Erro ao reordenar dados: " + erro.toString());
+        Logger.log("⚠️ Erro ao reordenar: " + erro.toString());
     }
 }
 
 // ========================================================================
-// FUNÇÃO ONEDIT - AUTOFILL E SINCRONIZAÇÃO
-// ========================================================================
-
-function onEdit(e) {
-    try {
-        var aba = e.range.getSheet();
-        var nomeAba = aba.getName();
-        
-        if (nomeAba !== CONFIG.ABA_MOVIMENTACOES) return;
-
-        var colunaEditada = e.range.getColumn();
-        var linhaEditada = e.range.getRow();
-
-        // Autofill baseado no Prontuário (coluna C)
-        if (colunaEditada === 3 && linhaEditada >= 3) {
-            executarAutofill(aba, linhaEditada, e.range.getValue());
-        }
-
-        // Sincronização de status (coluna F)
-        if (colunaEditada === 6 && linhaEditada >= 3) {
-            sincronizarStatus(aba, linhaEditada);
-        }
-
-    } catch (erro) {
-        Logger.log("❌ Erro no onEdit Movimentações: " + erro.toString());
-    }
-}
-
-function executarAutofill(aba, linha, prontuario) {
-    try {
-        var prontuarioLimpo = prontuario.toString().trim();
-        if (!prontuarioLimpo) return;
-
-        var ss = SpreadsheetApp.getActiveSpreadsheet();
-        var abaBT = ss.getSheetByName(CONFIG.ABA_CENTRAL);
-        
-        if (!abaBT) {
-            Logger.log("⚠️ Aba BT 2025 não encontrada para autofill");
-            return;
-        }
-
-        var totalLinhas = abaBT.getLastRow();
-        if (totalLinhas <= 1) return;
-
-        // Buscar dados na aba BT 2025
-        var dadosBT = abaBT.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length).getValues();
-        
-        var encontrado = null;
-        for (var i = 0; i < dadosBT.length; i++) {
-            var prontuarioBT = (dadosBT[i][2] || "").toString().trim(); // Coluna C (Prontuário)
-            if (prontuarioBT === prontuarioLimpo) {
-                encontrado = dadosBT[i];
-                break;
-            }
-        }
-
-        if (encontrado) {
-            // Preencher automaticamente
-            aba.getRange(linha, 1).setValue(encontrado[0]);  // Secretaria (A)
-            aba.getRange(linha, 2).setValue(encontrado[1]);  // Nome (B)
-            aba.getRange(linha, 4).setValue(encontrado[5]);  // Cargo (D) - coluna F do BT
-            aba.getRange(linha, 5).setValue(encontrado[10]); // Ação (E) - coluna K do BT
-            
-            Logger.log("✅ Autofill executado para prontuário " + prontuarioLimpo);
-            
-            // Mostrar confirmação visual
-            SpreadsheetApp.getActive().toast(
-                "Dados preenchidos para " + encontrado[1] + " (" + encontrado[0] + ")", 
-                "📋 Autofill", 
-                3
-            );
-        } else {
-            Logger.log("⚠️ Prontuário " + prontuarioLimpo + " não encontrado na base de dados");
-            SpreadsheetApp.getActive().toast(
-                "Prontuário " + prontuarioLimpo + " não encontrado na base de dados", 
-                "⚠️ Autofill", 
-                3
-            );
-        }
-
-    } catch (erro) {
-        Logger.log("❌ Erro no autofill: " + erro.toString());
-    }
-}
-
-// ========================================================================
-// SINCRONIZAÇÃO DE STATUS E ENVIO DE E-MAIL
-// ========================================================================
-
-function sincronizarStatus(aba, linha) {
-    try {
-        var secretaria = aba.getRange(linha, 1).getValue();     // Coluna A
-        var nome = aba.getRange(linha, 2).getValue();           // Coluna B
-        var prontuario = aba.getRange(linha, 3).getValue();     // Coluna C
-        var statusNovo = aba.getRange(linha, 6).getValue();     // Coluna F
-
-        if (!secretaria || !prontuario || !statusNovo) {
-            Logger.log("⚠️ Dados insuficientes para sincronização de status");
-            return;
-        }
-
-        Logger.log("🔄 Sincronizando status: " + secretaria + " - " + prontuario + " - " + statusNovo);
-
-        // Encontrar a secretaria correspondente
-        var secretariaInfo = null;
-        for (var i = 0; i < PLANILHAS_SECRETARIAS.length; i++) {
-            if (PLANILHAS_SECRETARIAS[i].nome === secretaria.toString().trim()) {
-                secretariaInfo = PLANILHAS_SECRETARIAS[i];
-                break;
-            }
-        }
-        
-        if (!secretariaInfo) {
-            Logger.log("⚠️ Secretaria " + secretaria + " não encontrada no array");
-            return;
-        }
-
-        // Atualizar PGE da secretaria
-        try {
-            var planilhaPGE = SpreadsheetApp.openById(secretariaInfo.id);
-            var abaPGE = planilhaPGE.getSheetByName("Planejamento de Gestão Estratégica");
-            
-            if (!abaPGE) {
-                Logger.log("⚠️ Aba PGE não encontrada na planilha da " + secretaria);
-                return;
-            }
-
-            var totalLinhasPGE = abaPGE.getLastRow();
-            if (totalLinhasPGE < 4) return;
-
-            // Buscar o prontuário na planilha PGE (dados começam na linha 4, coluna C)
-            var dadosPGE = abaPGE.getRange(4, 1, totalLinhasPGE - 3, abaPGE.getLastColumn()).getValues();
-
-            for (var i = 0; i < dadosPGE.length; i++) {
-                var prontuarioPGE = (dadosPGE[i][2] || "").toString().trim(); // Coluna C
-                
-                if (prontuarioPGE === prontuario.toString().trim()) {
-                    // Atualizar status na coluna Q (índice 16)
-                    abaPGE.getRange(i + 4, 17).setValue(statusNovo); // Coluna Q = índice 17
-                    Logger.log("✅ Status atualizado no PGE da " + secretaria);
-                    break;
-                }
-            }
-
-        } catch (erroPGE) {
-            Logger.log("❌ Erro ao atualizar PGE da " + secretaria + ": " + erroPGE.toString());
-        }
-
-        // Enviar e-mail se necessário
-        var statusParaEmail = ["Em Andamento", "Concluído"];
-        var enviarEmail = false;
-        for (var j = 0; j < statusParaEmail.length; j++) {
-            if (statusNovo.toString() === statusParaEmail[j]) {
-                enviarEmail = true;
-                break;
-            }
-        }
-        
-        if (enviarEmail) {
-            enviarEmailNotificacao(secretaria, nome, prontuario, statusNovo);
-        }
-
-        // Confirmação visual
-        SpreadsheetApp.getActive().toast(
-            "Status \"" + statusNovo + "\" sincronizado para " + secretaria, 
-            "🔄 Sincronização", 
-            3
-        );
-
-    } catch (erro) {
-        Logger.log("❌ Erro ao sincronizar status: " + erro.toString());
-    }
-}
-
-function enviarEmailNotificacao(secretaria, nome, prontuario, status) {
-    try {
-        // Lista de status permitidos
-        var statusValidos = ["EM MOVIMENTAÇÃO", "CONCLUIDO", "CANCELADO"];
-        
-        // Se não for um status válido, não faz nada
-        if (statusValidos.indexOf(status) === -1) {
-            Logger.log("⏩ Notificação não enviada. Status '" + status + "' não exige e-mail.");
-            return;
-        }
-
-        var emailSecretario = EMAILS_SECRETARIOS[secretaria];
-        var emailPontoFocal = EMAILS_PONTOS_FOCAIS[secretaria];
-        
-        if (!emailSecretario && !emailPontoFocal) {
-            Logger.log("⚠️ Nenhum e-mail encontrado para a secretaria: " + secretaria);
-            return;
-        }
-
-        // Preparar lista de destinatários
-        var destinatarios = [];
-        if (emailSecretario) destinatarios.push(emailSecretario);
-        if (emailPontoFocal) destinatarios.push(emailPontoFocal);
-
-        var assunto = "Banco de Talentos - Movimentação de Servidor (" + status + ")";
-        var corpo = criarCorpoEmailNotificacao(secretaria, nome, prontuario, status);
-
-        // Enviar para todos os destinatários
-        for (var i = 0; i < destinatarios.length; i++) {
-            try {
-                MailApp.sendEmail({
-                    to: destinatarios[i],
-                    subject: assunto,
-                    htmlBody: corpo
-                });
-                
-                Logger.log("📧 E-mail enviado para " + destinatarios[i] + " (" + secretaria + ")");
-                
-            } catch (erroEmail) {
-                Logger.log("❌ Erro ao enviar e-mail para " + destinatarios[i] + ": " + erroEmail.toString());
-            }
-        }
-
-        // Confirmação visual consolidada
-        var tipoDestinatario = "";
-        if (emailSecretario && emailPontoFocal) {
-            tipoDestinatario = "secretário e ponto focal";
-        } else if (emailSecretario) {
-            tipoDestinatario = "secretário";
-        } else {
-            tipoDestinatario = "ponto focal";
-        }
-
-        SpreadsheetApp.getActive().toast(
-            "E-mail enviado para " + tipoDestinatario + " da " + secretaria, 
-            "📧 Notificação", 
-            3
-        );
-
-    } catch (erro) {
-        Logger.log("❌ Erro ao enviar notificação: " + erro.toString());
-    }
-}
-
-function criarCorpoEmailNotificacao(secretaria, nome, prontuario, status) {
-    // Cores de status
-    var corStatus = "#333"; // padrão
-    if (status === "EM MOVIMENTAÇÃO") corStatus = "#d9534f"; // vermelho
-    else if (status === "CONCLUIDO") corStatus = "#5cb85c"; // verde
-    else if (status === "CANCELADO") corStatus = "#f0ad4e"; // laranja
-
-    return `
-    <div style="max-width:600px; margin:auto; font-family: Calibri, Arial, sans-serif; line-height: 1.6; color: #333; font-size:14px;">
-        <h2 style="color: #1f4e79; text-align:center;">🏛️ Banco de Talentos - Prefeitura de Santana de Parnaíba</h2>
-        
-        <p><strong>Prezado(a) Gestor(a),</strong></p>
-        <p>Informamos que um servidor vinculado à <strong>${secretaria}</strong> encontra-se em processo de movimentação através do Banco de Talentos.</p>
-
-        <div style="background-color: #f8f9fa; padding: 15px 20px; border-left: 4px solid #1f4e79; border-radius: 6px; margin: 20px 0;">
-            <h3 style="margin-top:0; color: #1f4e79;">📋 Dados da Movimentação:</h3>
-            <p style="margin:5px 0;">📛 <strong>Nome do Servidor:</strong> ${nome}</p>
-            <p style="margin:5px 0;">🆔 <strong>Prontuário:</strong> ${prontuario}</p>
-            <p style="margin:5px 0;">⚡ <strong>Status Atual:</strong> <span style="color:${corStatus}; font-weight:bold;">${status}</span></p>
-            <p style="margin:5px 0;">📌 <strong>Secretaria de Origem:</strong> ${secretaria}</p>
-        </div>
-
-        <p>Este é um aviso automático do Sistema Banco de Talentos do Programa Governo Eficaz.</p>
-        <p>Para mais informações ou esclarecimentos, entre em contato conosco:</p>
-        <p>📧 <strong>sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br</strong><br>
-           📱 <strong>4622-7500 - 8819 / 8644 / 7574</strong></p>
-
-        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-
-        <p style="font-size: 11px; color: #666; text-align:center;">
-            <strong>Atenciosamente,</strong><br>
-            Programa Governo Eficaz<br>
-            Prefeitura de Santana de Parnaíba<br>
-            <em>Sistema automatizado - não responda este e-mail</em>
-        </p>
-    </div>
-    `;
-}
-
-// ========================================================================
-// FUNÇÕES AUXILIARES E DE PROCESSAMENTO
+// PROCESSAR DADOS DE UMA SECRETARIA EXTERNA
 // ========================================================================
 
 function processarSecretariaOtimizada(secretaria) {
     try {
-        var siglaSecretaria = secretaria.nome;
-        
-        Logger.log("📂 Processando: " + siglaSecretaria + " (ID: " + secretaria.id.substring(0, 10) + "...)");
-        
-        // Abrir planilha
-        var planilhaExterna = SpreadsheetApp.openById(secretaria.id);
-        
-        // Verificar aba
-        var abaOrigem = planilhaExterna.getSheetByName(CONFIG.ABA_ORIGEM);
+        var sigla = secretaria.nome;
+        Logger.log("📂 Processando: " + sigla);
+
+        var planilha = SpreadsheetApp.openById(secretaria.id);
+        var abaOrigem = planilha.getSheetByName(CONFIG.ABA_ORIGEM);
         if (!abaOrigem) {
-            return { 
-                sucesso: false, 
-                erro: "Aba \"" + CONFIG.ABA_ORIGEM + "\" não encontrada",
-                siglaSecretaria: siglaSecretaria 
-            };
+            return { sucesso: false, erro: "Aba não encontrada", siglaSecretaria: sigla };
         }
-        
-        // Obter dados
+
         var ultimaLinha = abaOrigem.getLastRow();
-        
         if (ultimaLinha <= CONFIG.LINHA_INICIO_DADOS) {
-            Logger.log("ℹ️ Sem dados: " + siglaSecretaria);
-            return { 
-                sucesso: true, 
-                dados: [], 
-                siglaSecretaria: siglaSecretaria 
-            };
+            return { sucesso: true, dados: [], siglaSecretaria: sigla };
         }
-        
-        // Calcular linhas de dados disponíveis
-        var totalLinhas = ultimaLinha - CONFIG.LINHA_INICIO_DADOS;
-        
-        Logger.log("📊 " + siglaSecretaria + ": Linha " + (CONFIG.LINHA_INICIO_DADOS + 1) + " até " + ultimaLinha + " (" + totalLinhas + " linhas)");
-        
-        // Ler dados das colunas B até R
-        var dadosRange = abaOrigem.getRange(
+
+        var dadosBrutos = abaOrigem.getRange(
             CONFIG.LINHA_INICIO_DADOS + 1,
-            2, // Coluna B (Nome)
-            totalLinhas, 
+            2, // Coluna B
+            ultimaLinha - CONFIG.LINHA_INICIO_DADOS,
             17 // Colunas B até R
-        );
-        
-        var dadosBrutos = dadosRange.getValues();
-        
-        Logger.log("📖 " + siglaSecretaria + ": Lidas " + dadosBrutos.length + " linhas de dados brutos");
-        
-        // Processar dados
+        ).getValues();
+
         var dadosProcessados = [];
-        
         for (var i = 0; i < dadosBrutos.length; i++) {
             var linha = dadosBrutos[i];
-            var nome = (linha[0] || "").toString().trim();
-            
-            if (nome) {
-                var linhaCentral = [
-                    siglaSecretaria,                           // A - Secretaria
-                    nome,                                      // B - Nome
-                    (linha[1] || "").toString().trim(),        // C - Prontuário
-                    (linha[2] || "").toString().trim(),        // D - Formação Acadêmica
-                    (linha[3] || "").toString().trim(),        // E - Área de Formação
-                    (linha[4] || "").toString().trim(),        // F - Cargo Concurso
-                    (linha[5] || "").toString().trim(),        // G - CC / FE
-                    (linha[6] || "").toString().trim(),        // H - Função Gratificada
-                    (linha[7] || "").toString().trim(),        // I - Readaptado
-                    (linha[8] || "").toString().trim(),        // J - Justificativa
-                    (linha[9] || "").toString().trim(),        // K - Ação
-                    (linha[10] || "").toString().trim(),       // L - Condicionalidade
-                    formatarDataBrasileira(linha[11] || ""),   // M - Data da Inclusão
-                    (linha[14] || "").toString().trim(),       // N - Status da Movimentação
-                    (linha[15] || "").toString().trim(),       // O - Interesse do Servidor
-                ];
-            
-                dadosProcessados.push(linhaCentral);
+            if ((linha[0] || "").toString().trim()) {
+                dadosProcessados.push([
+                    sigla,                                  // A
+                    linha[0],                               // B: Nome
+                    linha[1],                               // C: Prontuário
+                    linha[2],                               // D: Formação
+                    linha[3],                               // E: Área
+                    linha[4],                               // F: Cargo
+                    linha[5],                               // G: CC/FE
+                    linha[6],                               // H: Função Gratificada
+                    linha[7],                               // I: Readaptado
+                    linha[8],                               // J: Justificativa
+                    linha[9],                               // K: Ação
+                    linha[10],                              // L: Condicionalidade
+                    formatarDataBrasileira(linha[11]),      // M: Data
+                    (linha[15] || "").toString().trim(),   // N: Status (coluna Q)
+                    (linha[16] || "").toString().trim()    // O: Interesse (coluna R)
+                ]);
             }
         }
 
-        Logger.log("✅ " + siglaSecretaria + ": " + dadosProcessados.length + " registros processados");
-        
-        return {
-            sucesso: true,
-            dados: dadosProcessados,
-            siglaSecretaria: siglaSecretaria
-        };
-        
+        return { sucesso: true, dados: dadosProcessados, siglaSecretaria: sigla };
     } catch (erro) {
-        Logger.log("❌ Erro em " + secretaria.nome + ": " + erro.toString());
-        return {
-            sucesso: false,
-            erro: erro.toString(),
-            siglaSecretaria: secretaria.nome
-        };
+        return { sucesso: false, erro: erro.toString(), siglaSecretaria: secretaria.nome };
     }
 }
+
+// ========================================================================
+// PREPARAR ABA CENTRAL (cria, limpa, cabeçalho)
+// ========================================================================
 
 function prepararPlanilhaCentral() {
-    var planilhaCentral = SpreadsheetApp.getActiveSpreadsheet();
-    var abaCentral = planilhaCentral.getSheetByName(CONFIG.ABA_CENTRAL);
-    
-    if (!abaCentral) {
-        Logger.log("📋 Criando aba \"" + CONFIG.ABA_CENTRAL + "\"");
-        abaCentral = planilhaCentral.insertSheet(CONFIG.ABA_CENTRAL);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var aba = ss.getSheetByName(CONFIG.ABA_CENTRAL);
+
+    if (!aba) {
+        aba = ss.insertSheet(CONFIG.ABA_CENTRAL);
     }
-    
-    // Limpar e configurar cabeçalhos
-    abaCentral.clear();
-    var rangeCabecalho = abaCentral.getRange(1, 1, 1, CABECALHOS_CENTRAL.length);
-    rangeCabecalho.setValues([CABECALHOS_CENTRAL]);
-    
-    // Formatação do cabeçalho
-    rangeCabecalho
-        .setBackground("#1f4e79")
-        .setFontColor("#ffffff")
-        .setFontWeight("bold")
-        .setFontFamily("Calibri")
-        .setFontSize(10)
-        .setHorizontalAlignment("center")
-        .setVerticalAlignment("middle");
-    
-    abaCentral.setFrozenRows(1);
-    
-    return { planilhaCentral: planilhaCentral, abaCentral: abaCentral };
+
+    aba.clear();
+    var cabecalho = aba.getRange(1, 1, 1, CABECALHOS_CENTRAL.length);
+    cabecalho.setValues([CABECALHOS_CENTRAL]);
+    cabecalho.setBackground("#1f4e79")
+           .setFontColor("#ffffff")
+           .setFontWeight("bold")
+           .setFontFamily("Calibri")
+           .setFontSize(10)
+           .setHorizontalAlignment("center")
+           .setVerticalAlignment("middle");
+
+    aba.setFrozenRows(1);
+    return { abaCentral: aba };
 }
 
-function criarLotes(planilhas, tamanhoLote) {
+// ========================================================================
+// CRIAR LOTES PARA PROCESSAMENTO SEQUENCIAL
+// ========================================================================
+
+function criarLotes(planilhas, tamanho) {
     var lotes = [];
-    for (var i = 0; i < planilhas.length; i += tamanhoLote) {
-        lotes.push(planilhas.slice(i, i + tamanhoLote));
+    for (var i = 0; i < planilhas.length; i += tamanho) {
+        lotes.push(planilhas.slice(i, i + tamanho));
     }
     return lotes;
 }
 
+// ========================================================================
+// PROCESSAR UM LOTE DE SECRETARIAS
+// ========================================================================
+
 function processarLoteSecretarias(lote, numeroLote) {
-    Logger.log("📦 Processando lote " + numeroLote + " com " + lote.length + " planilhas");
-    
     var dadosLote = [];
     var errosLote = [];
     var processadas = 0;
-    
+
     for (var i = 0; i < lote.length; i++) {
-        var secretaria = lote[i];
-        try {
-            var resultado = processarSecretariaOtimizada(secretaria);
-            
-            if (resultado.sucesso) {
-                dadosLote = dadosLote.concat(resultado.dados);
-                processadas++;
-                Logger.log("✅ " + resultado.siglaSecretaria + ": " + resultado.dados.length + " registros");
-            } else {
-                errosLote.push(secretaria.nome + ": " + resultado.erro);
-                Logger.log("❌ " + secretaria.nome + ": " + resultado.erro);
-            }
-            
-        } catch (erro) {
-            var mensagemErro = secretaria.nome + ": " + erro.toString();
-            errosLote.push(mensagemErro);
-            Logger.log("💥 " + mensagemErro);
+        var resultado = processarSecretariaOtimizada(lote[i]);
+        if (resultado.sucesso) {
+            dadosLote = dadosLote.concat(resultado.dados);
+            processadas++;
+        } else {
+            errosLote.push(lote[i].nome + ": " + resultado.erro);
         }
-        
         Utilities.sleep(200);
     }
-    
+
     return {
         dados: dadosLote,
         processadas: processadas,
@@ -893,112 +757,78 @@ function processarLoteSecretarias(lote, numeroLote) {
     };
 }
 
+// ========================================================================
+// FORMATAR DATA PARA PADRÃO BRASILEIRO (dd/mm/yyyy)
+// ========================================================================
+
 function formatarDataBrasileira(data) {
-    if (!data || data === "" || data === null) {
-        return "";
-    }
-    
-    try {
-        if (typeof data === "string" && data.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-            return data;
-        }
-        
-        var dataObj;
-        if (data instanceof Date) {
-            dataObj = data;
-        } else {
-            dataObj = new Date(data);
-        }
-        
-        if (isNaN(dataObj.getTime())) {
-            return "";
-        }
-        
-        var dia = String(dataObj.getDate()).padStart(2, '0');
-        var mes = String(dataObj.getMonth() + 1).padStart(2, '0');
-        var ano = dataObj.getFullYear();
-        
+    if (!data || typeof data === 'string') return "";
+
+    if (data instanceof Date && !isNaN(data.getTime())) {
+        var dia = String(data.getDate()).padStart(2, '0');
+        var mes = String(data.getMonth() + 1).padStart(2, '0');
+        var ano = data.getFullYear();
         return dia + "/" + mes + "/" + ano;
-        
-    } catch (erro) {
-        Logger.log("⚠️ Erro ao formatar data: " + erro.toString());
-        return "";
     }
+    return "";
 }
+
+// ========================================================================
+// APLICAR FORMATAÇÃO VISUAL NA ABA CENTRAL
+// ========================================================================
 
 function aplicarFormatacaoOtimizada(abaCentral, totalLinhas) {
     if (totalLinhas <= 1) return;
-    
-    try {
-        Logger.log("🎨 Aplicando formatação brasileira...");
-        
-        // Larguras das colunas (em pixels)
-        var largurasColunas = [66, 257, 68, 108, 103, 168, 97, 88, 76, 256, 125, 170, 88, 120, 150];
-        
-        for (var i = 0; i < largurasColunas.length; i++) {
-            abaCentral.setColumnWidth(i + 1, largurasColunas[i]);
-        }
-        
-        // Formatação dos dados
-        var rangeDados = abaCentral.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length);
-        rangeDados
-            .setFontFamily("Calibri")
-            .setFontSize(10)
-            .setHorizontalAlignment("center")
-            .setVerticalAlignment("middle")
-            .setWrap(true);
-        
-        // Formatação da coluna de data (M)
-        if (totalLinhas > 1) {
-            var colunaData = abaCentral.getRange(2, 13, totalLinhas - 1, 1);
-            colunaData.setNumberFormat("dd/mm/yyyy");
-        }
-        
-        // Aplicar cores alternadas
-        for (var i = 2; i <= totalLinhas; i++) {
-            var linha = abaCentral.getRange(i, 1, 1, CABECALHOS_CENTRAL.length);
-            var corFundo = (i % 2 === 0) ? "#ffffff" : "#f8f9fa";
-            linha.setBackground(corFundo);
-        }
-        
-        // Destaque na coluna secretaria
-        var colunaSecretaria = abaCentral.getRange(2, 1, totalLinhas - 1, 1);
-        colunaSecretaria.setBackground("#e3f2fd");
-        colunaSecretaria.setFontWeight("bold");
-        
-        // Aplicar bordas
-        var rangeCompleto = abaCentral.getRange(1, 1, totalLinhas, CABECALHOS_CENTRAL.length);
-        rangeCompleto.setBorder(
-            true, true, true, true, true, true,
-            "#cccccc",
-            SpreadsheetApp.BorderStyle.SOLID
-        );
-        
-        Logger.log("✅ Formatação brasileira aplicada com sucesso!");
-        
-    } catch (erro) {
-        Logger.log("⚠️ Erro na formatação: " + erro.toString());
+
+    var larguras = [66, 257, 68, 108, 103, 168, 97, 88, 76, 256, 125, 170, 88, 120, 150];
+    for (var i = 0; i < larguras.length; i++) {
+        abaCentral.setColumnWidth(i + 1, larguras[i]);
     }
+
+    var rangeDados = abaCentral.getRange(2, 1, totalLinhas - 1, CABECALHOS_CENTRAL.length);
+    rangeDados.setFontFamily("Calibri")
+               .setFontSize(10)
+               .setHorizontalAlignment("center")
+               .setVerticalAlignment("middle")
+               .setWrap(true);
+
+    // Coluna M (Data da Inclusão)
+    if (totalLinhas > 1) {
+        abaCentral.getRange(2, 13, totalLinhas - 1, 1).setNumberFormat("dd/mm/yyyy");
+    }
+
+    // Cores alternadas
+    for (var i = 2; i <= totalLinhas; i++) {
+        abaCentral.getRange(i, 1, 1, CABECALHOS_CENTRAL.length)
+                 .setBackground(i % 2 === 0 ? "#ffffff" : "#f8f9fa");
+    }
+
+    // Destaque na coluna Secretaria
+    abaCentral.getRange(2, 1, totalLinhas - 1, 1)
+             .setBackground("#e3f2fd")
+             .setFontWeight("bold");
+
+    // Bordas
+    abaCentral.getRange(1, 1, totalLinhas, CABECALHOS_CENTRAL.length)
+             .setBorder(true, true, true, true, true, true, "#cccccc", SpreadsheetApp.BorderStyle.SOLID);
 }
 
+// ========================================================================
+// EXIBIR RESULTADO DA ATUALIZAÇÃO
+// ========================================================================
+
 function exibirResultadoOtimizado(relatorio) {
-    var porcentagemSucesso = Math.round((relatorio.secretariasProcessadas / PLANILHAS_SECRETARIAS.length) * 100);
-    
+    var porcentagem = Math.round((relatorio.secretariasProcessadas / PLANILHAS_SECRETARIAS.length) * 100);
     var mensagem = 
         "🎉 ATUALIZAÇÃO CONCLUÍDA!\n\n" +
         "📊 RESULTADOS:\n" +
-        "• Secretarias processadas: " + relatorio.secretariasProcessadas + "/" + PLANILHAS_SECRETARIAS.length + " (" + porcentagemSucesso + "%)\n" +
-        "• Registros importados: " + relatorio.registrosImportados + "\n" +
-        "• Duração total: " + relatorio.duracao + "s\n\n" +
-        "✨ DADOS ORDENADOS ALFABETICAMENTE POR SECRETARIA\n\n" +
+        "• Secretarias: " + relatorio.secretariasProcessadas + "/" + PLANILHAS_SECRETARIAS.length + " (" + porcentagem + "%)\n" +
+        "• Registros: " + relatorio.registrosImportados + "\n" +
+        "• Tempo: " + relatorio.duracao + " segundos\n\n" +
         (relatorio.erros.length > 0 ? 
-            "⚠️ Erros encontrados: " + relatorio.erros.length + "\nConsulte os logs para detalhes." : 
-            "✅ Processo executado sem erros!") + 
-        "\n\n📅 Concluído em: " + relatorio.fim.toLocaleString('pt-BR');
-    
-    SpreadsheetApp.getUi().alert(
-        "🏛️ Banco de Talentos - Sucesso!", 
-        mensagem,
-        SpreadsheetApp.getUi().ButtonSet.OK
-    );
+            "⚠️ Erros: " + relatorio.erros.length + "\nVerifique os logs." : 
+            "✅ Tudo certo!") + 
+        "\n\n📅 " + relatorio.fim.toLocaleString('pt-BR');
+
+    SpreadsheetApp.getUi().alert("✅ Sucesso!", mensagem, SpreadsheetApp.getUi().ButtonSet.OK);
 }
