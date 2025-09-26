@@ -256,10 +256,10 @@ function onEdit(e) {
             executarAutofill(aba, linha, e.value);
         }
 
-        // Coluna F (Status da Movimentação) → sincroniza e notifica
-        if (coluna === 6 && linha >= 3) {
-            sincronizarStatus(aba, linha);
-        }
+       // Coluna G (Status da Movimentação) → sincroniza e notifica
+          if (coluna === 7 && linha >= 3) {
+              sincronizarStatus(aba, linha);
+          }
     } catch (erro) {
         Logger.log("❌ Erro no onEdit: " + erro.toString());
     }
@@ -296,7 +296,8 @@ function executarAutofill(aba, linha, prontuario) {
             aba.getRange(linha, 1).setValue(encontrado[0]); // A: Secretaria
             aba.getRange(linha, 2).setValue(encontrado[1]); // B: Nome
             aba.getRange(linha, 4).setValue(encontrado[5]); // D: Cargo Concurso
-            aba.getRange(linha, 5).setValue(encontrado[10]); // E: Ação
+            aba.getRange(linha, 5).setValue(encontrado[6]); // E: CC/FE
+            aba.getRange(linha, 6).setValue(encontrado[10]); // F: Ação
 
             SpreadsheetApp.getActive().toast(
                 "Preenchido: " + encontrado[1],
@@ -324,7 +325,7 @@ function sincronizarStatus(aba, linha) {
         var secretaria = (aba.getRange(linha, 1).getValue() || "").toString().trim();     // A
         var nome = (aba.getRange(linha, 2).getValue() || "").toString().trim();           // B
         var prontuario = (aba.getRange(linha, 3).getValue() || "").toString().trim();     // C
-        var statusNovo = (aba.getRange(linha, 6).getValue() || "").toString().trim();     // F
+        var statusNovo = (aba.getRange(linha, 7).getValue() || "").toString().trim(); // G
 
         Logger.log("🔄 Sincronizando status:");
         Logger.log("Secretaria: " + secretaria);
@@ -749,13 +750,15 @@ function importarBancoDeTalentosOtimizado() {
 
         // Insere todos os dados
         if (todosOsDados.length > 0) {
-            Logger.log("📝 Inserindo " + todosOsDados.length + " registros...");
-            var range = abaCentral.getRange(2, 1, todosOsDados.length, CABECALHOS_CENTRAL.length);
-            range.setValues(todosOsDados);
-            relatorio.registrosImportados = todosOsDados.length;
-            aplicarFormatacaoOtimizada(abaCentral, todosOsDados.length + 1);
+    Logger.log("📝 Inserindo " + todosOsDados.length + " registros...");
+    var range = abaCentral.getRange(2, 1, todosOsDados.length, CABECALHOS_CENTRAL.length);
+    range.setValues(todosOsDados);
+    relatorio.registrosImportados = todosOsDados.length;
+    reordenarDadosAlfabeticamente(abaCentral);
+    aplicarFormatacaoOtimizada(abaCentral, abaCentral.getLastRow());
         }
-
+            // Atualiza aba Movimentações 2025 com base na aba BT 2025
+            atualizarMovimentacoesAutomatico();
         // Finaliza
         relatorio.fim = new Date();
         relatorio.duracao = Math.round((relatorio.fim - relatorio.inicio) / 1000);
@@ -798,6 +801,23 @@ function atualizarSecretariaEspecifica() {
             );
         }
     }
+    if (resultado.sucesso && resultado.dados.length > 0) {
+  removerDadosSecretaria(abaCentral, secretaria.nome);
+  var novaLinha = abaCentral.getLastRow() + 1;
+  abaCentral.getRange(novaLinha, 1, resultado.dados.length, CABECALHOS_CENTRAL.length)
+           .setValues(resultado.dados);
+  aplicarFormatacaoOtimizada(abaCentral, novaLinha + resultado.dados.length - 1);
+  reordenarDadosAlfabeticamente(abaCentral);
+
+  // Atualiza Movimentações após atualização da secretaria
+  atualizarMovimentacoesAutomatico();
+
+  SpreadsheetApp.getUi().alert(
+    "✅ Sucesso",
+    secretaria.nome + ": " + resultado.dados.length + " registros atualizados.",
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+}
 }
 
 function atualizarUmaSecretaria(secretaria) {
@@ -807,19 +827,23 @@ function atualizarUmaSecretaria(secretaria) {
 
         var resultado = processarSecretariaOtimizada(secretaria);
 
-        if (resultado.sucesso && resultado.dados.length > 0) {
-            removerDadosSecretaria(abaCentral, secretaria.nome);
-            var novaLinha = abaCentral.getLastRow() + 1;
-            abaCentral.getRange(novaLinha, 1, resultado.dados.length, CABECALHOS_CENTRAL.length)
-                     .setValues(resultado.dados);
-            aplicarFormatacaoOtimizada(abaCentral, novaLinha + resultado.dados.length - 1);
-            reordenarDadosAlfabeticamente(abaCentral);
+       if (resultado.sucesso && resultado.dados.length > 0) {
+    removerDadosSecretaria(abaCentral, secretaria.nome);
+    var novaLinha = abaCentral.getLastRow() + 1;
+    abaCentral.getRange(novaLinha, 1, resultado.dados.length, CABECALHOS_CENTRAL.length)
+             .setValues(resultado.dados);
 
-            SpreadsheetApp.getUi().alert(
-                "✅ Sucesso",
-                secretaria.nome + ": " + resultado.dados.length + " registros atualizados.",
-                SpreadsheetApp.getUi().ButtonSet.OK
-            );
+    reordenarDadosAlfabeticamente(abaCentral);
+
+    aplicarFormatacaoOtimizada(abaCentral, abaCentral.getLastRow());
+
+    SpreadsheetApp.getUi().alert(
+        "✅ Sucesso",
+        secretaria.nome + ": " + resultado.dados.length + " registros atualizados.",
+        SpreadsheetApp.getUi().ButtonSet.OK
+    );
+
+
         } else if (resultado.dados.length === 0) {
             SpreadsheetApp.getUi().alert(
                 "ℹ️ Sem dados",
@@ -1085,4 +1109,63 @@ function exibirResultadoOtimizado(relatorio) {
         "\n\n📅 " + relatorio.fim.toLocaleString('pt-BR');
 
     SpreadsheetApp.getUi().alert("✅ Sucesso!", mensagem, SpreadsheetApp.getUi().ButtonSet.OK);
+}
+// ========================================================================
+// PREENCHER MOVIMENTAÇÕES AUTOMATICAMENTE
+// ========================================================================
+
+function atualizarMovimentacoesAutomatico() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var abaBT = ss.getSheetByName(CONFIG.ABA_CENTRAL); // "BT 2025"
+  var abaMov = ss.getSheetByName(CONFIG.ABA_MOVIMENTACOES); // "Movimentações 2025"
+
+  if (!abaBT || !abaMov) {
+    Logger.log("❌ Abas não encontradas!");
+    return;
+  }
+
+  // Pega todos os dados da aba BT 2025
+  var totalLinhasBT = abaBT.getLastRow();
+  if (totalLinhasBT <= 1) return;
+  var dadosBT = abaBT.getRange(2, 1, totalLinhasBT - 1, CABECALHOS_CENTRAL.length).getValues();
+
+  // Pega prontuários já existentes na aba Movimentações 2025
+  var totalLinhasMov = abaMov.getLastRow();
+  var prontuariosExistentes = [];
+  if (totalLinhasMov > 2) {
+    prontuariosExistentes = abaMov.getRange(3, 3, totalLinhasMov - 2, 1).getValues()
+      .map(function(r) { return (r[0] || "").toString().trim(); });
+  }
+
+  var novosRegistros = [];
+
+  for (var i = 0; i < dadosBT.length; i++) {
+    var linha = dadosBT[i];
+    var secretaria = (linha[0] || "").toString().trim();
+    var nome = (linha[1] || "").toString().trim();
+    var prontuario = (linha[2] || "").toString().trim();
+    var cargo = (linha[5] || "").toString().trim();
+    var ccfe = (linha[6] || "").toString().trim(); // Coluna G no BT 2025
+    var acao = (linha[10] || "").toString().trim();
+    var status = (linha[13] || "").toString().trim();
+    
+    // Condição: só entra se ação for LIBERAÇÃO IMEDIATA e prontuário ainda não existir
+    if (acao.toUpperCase() === "LIBERAÇÃO IMEDIATA" && prontuario && !prontuariosExistentes.includes(prontuario)) {
+      novosRegistros.push([secretaria, nome, prontuario, cargo, ccfe, acao, status || ""]);
+    }
+  }
+
+  // Insere os novos registros
+  if (novosRegistros.length > 0) {
+    var primeiraLinhaLivre = abaMov.getLastRow() + 1;
+    abaMov.getRange(primeiraLinhaLivre, 1, novosRegistros.length, novosRegistros[0].length).setValues(novosRegistros);
+
+    SpreadsheetApp.getActive().toast(
+      novosRegistros.length + " registros adicionados em Movimentações 2025",
+      "📥 Atualização Automática",
+      5
+    );
+  } else {
+    Logger.log("⚠️ Nenhum registro novo encontrado.");
+  }
 }
