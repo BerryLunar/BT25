@@ -174,6 +174,9 @@ function criarMenuPersonalizado() {
         .addItem("🔄 Atualizar Banco", "importarBancoDeTalentosOtimizado")
         .addItem("📊 Atualizar Secretaria Específica", "atualizarSecretariaEspecifica")
         .addSeparator()
+        .addItem("📝 Gerar Encaminhamento", "gerarEncaminhamentoSelecionado")
+        .addItem("📄 Gerar Ciência", "gerarCienciaSelecionado")
+        .addSeparator()
         .addItem("⚙️ Instalar Gatilhos", "instalarGatilhos")
         .addSeparator()
         .addItem("ℹ️ Sobre o Sistema", "exibirSobre")
@@ -185,15 +188,15 @@ function exibirSobre() {
         "🏛️ SISTEMA BANCO DE TALENTOS\n" +
         "Programa Governo Eficaz - Santana de Parnaíba\n\n" +
         "🎯 COMO USAR:\n" +
-        "• Execute \"Instalar Gatilhos\" uma vez após abrir a planilha\n" +
         "• Use \"Atualizar Secretaria\" para atualizações rápidas\n" +
         "• Use \"Atualizar Banco\" para sincronização completa\n" +
+        "• Retire os filtros antes de clicar em Atualizar\n" +
         "• Registre movimentações na aba \"Movimentações 2025\"\n\n" +
         "📞 SUPORTE TÉCNICO:\n" +
         "📧 sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br\n" +
         "📱 4622-7500 - 8819 / 8644 / 7574\n\n" +
-        "🚀 Versão Final - Funcionalidade Garantida\n" +
-        "📅 11/09/2025";
+        "🚀 Versão Final\n" +
+        "📅 03/11/2025";
     
     SpreadsheetApp.getUi().alert("ℹ️ Sobre o Sistema", sobre, SpreadsheetApp.getUi().ButtonSet.OK);
 }
@@ -1167,5 +1170,420 @@ function atualizarMovimentacoesAutomatico() {
     );
   } else {
     Logger.log("⚠️ Nenhum registro novo encontrado.");
+  }
+}
+// ========================================================================
+// GERAR CIÊNCIA / ENCAMINHAMENTO - INTEGRAÇÃO COM "Movimentações 2025"
+// ========================================================================
+
+// IDs e modelos fornecidos (ajuste se necessário)
+var MODELO_CIENCIA_ID = "15L8QmJn56zrkmAvuSvZ2F_LAPMjcHwvICw4X9gJUfps"; // ID do modelo Ciência (do link que você mandou)
+var MODELO_ENCAMINHAMENTO_ID = "1KSneV2-clDw67Qx67_Y12-RBuaEZWp-f6ShBdNXDRec"; // ID do modelo Encaminhamento (link que você mandou)
+var PASTA_CIENCIA_ID = "1ZMjslt15pHmkkHHRTdqKqeQt3ZLKSfO3"; // pasta para salvar Ciências
+var PASTA_ENCAMINHAMENTO_ID = "1o45nMcyPDDqB009s_VcvFrTpJShiaAub"; // pasta para salvar Encaminhamentos
+
+// Planilha de numeração (para pegar próximo número e pintar de amarelo)
+var PLANILHA_NUMERACAO_ENCAMINHAMENTO_ID = "1vdQa93PB1CyZP0PSAN9AHc5ukmc6L09WUP2AnLagaUE"; // ID que você passou
+
+// Mapeamento secretários (tabela que você forneceu)
+var SECRETARIOS = {
+  "SECOM": "Márcio Augusto Rossone",
+  "SEMEDES": "João Marcos Dolabani Port",
+  "SEMOP": "Wellison Ivanildo Da Silva",
+  "SEMUTTRANS": "Moises Arruda",
+  "SMA": "José Roberto Martins",
+  "SMAFEL": "Ricardo Souza Paixão",
+  "SMCC": "Helio De Souza Silva",
+  "SMCL": "Clueusa Carvalho",
+  "SMCT": "Valmir Baptista Damas",
+  "SMDS": "Marcos Pestana Corrêa",
+  "SME": "Denise Marques Da Silva",
+  "SMF": "Vaumil Antonio Pontes",
+  "SMGAED": "Maurício Ribeiro Nunes",
+  "SMH": "Diego Oliveira Dias",
+  "SMMAP": "Veruska Ticiana Franklin De Carvalho",
+  "SMMF": "Selma Oliveira Cezar",
+  "SMNJ": "Veronica Mutti Calderaro Teixeira Koishi",
+  "SMOP": "Vivian Cristina Matiassi Do Carmo",
+  "SMOU": "Wilson Felipe Dorácio",
+  "SMS": "Maria Silvia De Almeida Mello",
+  "SMSD": "Ricardo Cordeiro Branco De Souza",
+  "SMSM": "Mário Cesar Da Silva",
+  "SMSU": "Eduardo Espósito"
+};
+
+// UTIL: retorna "dd", "mesExtenso", "ano" para uma Date
+function partesDataBR(data) {
+  var dataCorrigida = new Date(Utilities.formatDate(data, "GMT-3", "yyyy/MM/dd HH:mm:ss"));
+  var d = dataCorrigida.getDate().toString().padStart(2, "0");
+  var meses = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  var m = meses[dataCorrigida.getMonth()];
+  var a = dataCorrigida.getFullYear().toString();
+  return { dia: d, mes: m, ano: a };
+}
+
+// UTIL: pega próximo número em branco numa planilha de numeração e pinta de amarelo (retorna string)
+function pegarProximoNumeroMemoEmPlanilha(planilhaId, nomeAba) {
+  try {
+    var planilha = SpreadsheetApp.openById(planilhaId);
+    var sheet = planilha.getSheetByName(nomeAba || sheet.getSheets()[0].getName());
+  } catch (e) {
+    // tenta abrir sem nome de aba — busca primeira
+    var planilha = SpreadsheetApp.openById(planilhaId);
+    var sheet = planilha.getSheets()[0];
+  }
+  if (!sheet) throw new Error("Aba de numeração não encontrada.");
+
+  var range = sheet.getDataRange();
+  var values = range.getValues();
+  var backgrounds = range.getBackgrounds();
+
+  for (var i = 0; i < values.length; i++) {
+    for (var j = 0; j < values[i].length; j++) {
+      var numero = values[i][j];
+      var cor = (backgrounds[i] && backgrounds[i][j]) ? backgrounds[i][j] : "";
+      if (numero && numero.toString().trim() !== "") {
+        var celulaSemCor = (
+          cor === "" ||
+          cor === "#ffffff" ||
+          cor === "#FFFFFF" ||
+          cor === null ||
+          cor === undefined ||
+          (typeof cor === "string" && cor.toLowerCase() === "#ffffff")
+        );
+        if (celulaSemCor) {
+          var cell = sheet.getRange(i + 1, j + 1);
+          cell.setBackground("#FFFF00");
+          return numero.toString().trim();
+        }
+      }
+    }
+  }
+  throw new Error("Nenhum número disponível (todos usados).");
+}
+
+// UTIL: substituir tokens simples no documento (texto puro)
+function substituirTokensNoDoc(doc, mapaTokens) {
+  var body = doc.getBody();
+  for (var token in mapaTokens) {
+    var valor = mapaTokens[token] !== undefined && mapaTokens[token] !== null ? mapaTokens[token] : "";
+    body.replaceText(token, valor);
+  }
+  doc.saveAndClose();
+}
+
+// UTIL: cria documento a partir de template, aplica substituições, move para pasta e retorna URL e fileId
+function criarDocumentoPorTemplate(templateId, nomeArquivo, pastaId, mapaTokens) {
+  var copia = DriveApp.getFileById(templateId).makeCopy(nomeArquivo);
+  if (pastaId) {
+    var pasta = DriveApp.getFolderById(pastaId);
+    pasta.addFile(copia);
+    // remover da pasta raiz para não duplicar visualmente (opcional)
+    DriveApp.getRootFolder().removeFile(copia);
+  }
+  var doc = DocumentApp.openById(copia.getId());
+  substituirTokensNoDoc(doc, mapaTokens);
+  return { url: doc.getUrl(), id: copia.getId() };
+}
+function abrirDocumento(url) {
+  var html = HtmlService.createHtmlOutput(`
+    <script>
+      window.open('${url}', '_blank');
+      google.script.host.close();
+    </script>
+  `);
+  SpreadsheetApp.getUi().showModalDialog(html, "Documento Gerado com Sucesso!");
+}
+// ADICIONA LINK NA ABA "Controle de Memos"
+// A coluna layout assumido na aba Controle de Memos (C..I = col 3..9):
+// 3 = Encaminhamento (hyperlink), 4 = Ciência (hyperlink), 5 = Data, 6 = Secretaria, 7 = Cargo, 8 = Observações, 9 = Processo
+function adicionarLinkControleMemos(tipo, url, dadosMov) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var abaControle = ss.getSheetByName("Controle de Memos");
+  if (!abaControle) {
+    SpreadsheetApp.getUi().alert("Aba 'Controle de Memos' não encontrada.");
+    return;
+  }
+
+  // tenta achar linha já existente para MESMA PESSOA (nome + processo)
+  var ultimaLinha = abaControle.getLastRow();
+  var linhaDestino = null;
+
+  if (ultimaLinha >= 3) {
+    var dadosControle = abaControle.getRange(3, 4, ultimaLinha - 2, 6).getValues(); // C..I = 3..9
+    for (var i = 0; i < dadosControle.length; i++) {
+      var linha = i + 3;
+      var nomeLinkEnc = abaControle.getRange(linha, 3).getFormula() || "";
+      var nomeLinkCie = abaControle.getRange(linha, 4).getFormula() || "";
+      var processoCel = (abaControle.getRange(linha, 9).getValue() || "").toString().trim();
+      var secretariaCel = (abaControle.getRange(linha, 6).getValue() || "").toString().trim();
+      var nomeCel = (abaControle.getRange(linha, 7).getValue() || "").toString().trim(); // cargo coluna 7
+      if (
+        processoCel === dadosMov.processo ||
+        nomeCel.includes(dadosMov.cargoEscolhido) ||
+        secretariaCel === dadosMov.secretariaDestino
+      ) {
+        linhaDestino = linha;
+        break;
+      }
+    }
+  }
+
+  // se não encontrou, cria nova linha
+  if (!linhaDestino) linhaDestino = abaControle.getLastRow() + 1;
+
+  // criar hiperlink sem erro de aspas
+  var linkFormula = '=HYPERLINK("' + url.replace(/"/g, '""') + '";"' +
+                    (tipo === "encaminhamento" ? "Encaminhamento" : "Ciência") + '")';
+
+  if (tipo === "encaminhamento") {
+    abaControle.getRange(linhaDestino, 3).setFormula(linkFormula);
+  } else if (tipo === "ciencia") {
+    abaControle.getRange(linhaDestino, 4).setFormula(linkFormula);
+  }
+
+  // Data
+  abaControle.getRange(linhaDestino, 5).setValue(dadosMov.dataMovimentacao || "");
+  // Secretaria
+  abaControle.getRange(linhaDestino, 6).setValue(dadosMov.secretariaDestino || "");
+  // Cargo
+  abaControle.getRange(linhaDestino, 7).setValue(dadosMov.cargoEscolhido || "");
+  // Observações (deixa em branco — não coloca o nome do doc aqui)
+  abaControle.getRange(linhaDestino, 8).setValue("");
+  // Processo
+  abaControle.getRange(linhaDestino, 9).setValue(dadosMov.processo || "");
+}
+
+// Extrai dados da linha ativa na aba "Movimentações 2025"
+function extrairDadosMovimentacao(aba, linha) {
+  // Colunas importantes no seu layout:
+  // A = 1 Secretaria
+  // B = 2 Nome
+  // C = 3 Prontuário
+  // D = 4 Cargo Concurso
+  // E = 5 CC / FE
+  // H = 8 Secretaria Destino
+  // J = 10 Data da Movimentação
+  // K = 11 Processo
+  var secretaria = (aba.getRange(linha, 1).getValue() || "").toString().trim();
+  var nome = (aba.getRange(linha, 2).getValue() || "").toString().trim();
+  var prontuario = (aba.getRange(linha, 3).getValue() || "").toString().trim();
+  var cargoConcurso = (aba.getRange(linha, 4).getValue() || "").toString().trim();
+  var ccfe = (aba.getRange(linha, 5).getValue() || "").toString().trim();
+  var secretariaDestino = (aba.getRange(linha, 8).getValue() || "").toString().trim();
+  var dataMov = aba.getRange(linha, 10).getValue();
+  var processo = (aba.getRange(linha, 11).getValue() || "").toString().trim();
+
+  // Regra condicional: se Cargo Concurso é N/A -> usar CC / FE; se Cargo Concurso preenchido, usa ele
+  var cargoEscolhido = "";
+  if (cargoConcurso && cargoConcurso.toString().trim().toUpperCase() !== "N/A") {
+    cargoEscolhido = cargoConcurso;
+  } else {
+    cargoEscolhido = ccfe;
+  }
+
+  // normalizar data para dd/mm/yyyy se for Date
+  var dataStr = "";
+  if (dataMov instanceof Date && !isNaN(dataMov.getTime())) {
+    dataStr = Utilities.formatDate(dataMov, Session.getScriptTimeZone(), "dd/MM/yyyy");
+  } else if (dataMov) {
+    dataStr = dataMov.toString();
+  }
+
+  return {
+    secretaria: secretaria,
+    nome: nome,
+    prontuario: prontuario,
+    cargoConcurso: cargoConcurso,
+    ccfe: ccfe,
+    secretariaDestino: secretariaDestino,
+    dataMovimentacao: dataStr,
+    processo: processo,
+    cargoEscolhido: cargoEscolhido
+  };
+}
+
+// FUNÇÃO: Gerar Ciência (menu)
+function gerarCienciaSelecionado() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var aba = ss.getSheetByName("Movimentações 2025");
+    if (!aba) { SpreadsheetApp.getUi().alert("Aba 'Movimentações 2025' não encontrada."); return; }
+
+    var linha = aba.getActiveRange().getRow();
+    if (linha < 3) {
+      SpreadsheetApp.getUi().alert("Selecione uma linha válida em 'Movimentações 2025' (a partir da linha 3).");
+      return;
+    }
+
+    var dados = extrairDadosMovimentacao(aba, linha);
+    var siglaDestino = (dados.secretariaDestino || "").toUpperCase().trim();
+
+    var SECRETARIAS_EXTENSO = {
+      "SECOM": "Secretaria Municipal de Comunicação",
+      "SEMEDES": "Secretaria Municipal de Emprego, Desenvolvimento, Ciência e Tecnologia",
+      "SEMOP": "Secretaria Municipal de Obras Privadas",
+      "SEMUTTRANS": "Secretaria Municipal de Transporte e Trânsito",
+      "SMA": "Secretaria Municipal de Administração",
+      "SMAFEL": "Secretaria Municipal de Esporte e Lazer",
+      "SMCC": "Secretaria Municipal da Casa Civil",
+      "SMCL": "Secretaria Municipal de Compras e Licitações",
+      "SMCT": "Secretaria Municipal de Cultura",
+      "SMDS": "Secretaria Municipal de Desenvolvimento Social",
+      "SME": "Secretaria Municipal de Educação",
+      "SMF": "Secretaria Municipal de Finanças",
+      "SMGAED": "Secretaria Municipal de Gestão, Assuntos Estratégicos e Desenvolvimento",
+      "SMH": "Secretaria Municipal de Habitação",
+      "SMMAP": "Secretaria Municipal de Meio Ambiente e Planejamento",
+      "SMMF": "Secretaria Municipal da Mulher e da Família",
+      "SMNJ": "Secretaria Municipal de Negócios Jurídicos",
+      "SMOP": "Secretaria Municipal de Obras Públicas",
+      "SMOU": "Secretaria Municipal de Operações Urbanas",
+      "SMS": "Secretaria Municipal de Saúde",
+      "SMSD": "Secretaria Municipal de Serviços Digitais",
+      "SMSM": "Secretaria Municipal de Serviços Municipais",
+      "SMSU": "Secretaria Municipal de Segurança Urbana"
+    };
+   var secretariaDestinoExtenso = SECRETARIAS_EXTENSO[siglaDestino] || siglaDestino;
+
+    // 🔹 Data da movimentação (coluna J)
+    var dataMov = dados.dataMovimentacao && dados.dataMovimentacao !== ""
+      ? Utilities.parseDate(dados.dataMovimentacao, "GMT-3", "dd/MM/yyyy")
+      : new Date();
+
+    // 🔹 Data da movimentação formatada (para [DATAMOV])
+    var dataMovFormatada = Utilities.formatDate(dataMov, "GMT-3", "dd/MM/yyyy");
+
+    // 🔹 Data da movimentação por extenso (para [DIA], [MES], [ANO])
+    var partesMov = partesDataBR(dataMov);
+
+    // 🔹 Data de hoje (para assinatura)
+    var dataHoje = new Date();
+    var partesHoje = partesDataBR(new Date(Utilities.formatDate(dataHoje, "GMT-3", "yyyy/MM/dd")));
+
+    // 🔹 Tokens para o documento
+    var tokens = {
+      "\\[DIA\\]": partesMov.dia,
+      "\\[MES\\]": partesMov.mes,
+      "\\[ANO\\]": partesMov.ano,
+      "\\[DATAMOV\\]": dataMovFormatada,
+      "\\[SECRETARIADESTINO\\]": secretariaDestinoExtenso,
+      "\\[NOME\\]": dados.nome || "",
+      "\\[DIAHOJE\\]": partesHoje.dia,
+      "\\[MESHOJE\\]": partesHoje.mes,
+      "\\[ANOHOJE\\]": partesHoje.ano
+    };
+
+    // 🔹 Cria o documento
+    var nomeArquivo = dados.nome + " - Programa Governo Eficaz 2025";
+    var resultado = criarDocumentoPorTemplate(MODELO_CIENCIA_ID, nomeArquivo, PASTA_CIENCIA_ID, tokens);
+
+    // 🔹 Adiciona link no controle
+    adicionarLinkControleMemos("ciencia", resultado.url, {
+      dataMovimentacao: dados.dataMovimentacao,
+      secretariaDestino: siglaDestino,
+      cargoEscolhido: dados.cargoEscolhido,
+      processo: dados.processo
+    });
+
+   
+    abrirDocumento(resultado.url);
+    SpreadsheetApp.getUi().alert("Ciência gerada com sucesso!");
+  } catch (erro) {
+    SpreadsheetApp.getUi().alert("Erro ao gerar Ciência: " + erro.toString());
+  }
+}
+
+// FUNÇÃO: Gerar Encaminhamento (menu)
+function gerarEncaminhamentoSelecionado() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var aba = ss.getSheetByName("Movimentações 2025");
+    if (!aba) { SpreadsheetApp.getUi().alert("Aba 'Movimentações 2025' não encontrada."); return; }
+
+    var linha = aba.getActiveRange().getRow();
+    if (linha < 3) {
+      SpreadsheetApp.getUi().alert("Selecione uma linha válida em 'Movimentações 2025' (a partir da linha 3).");
+      return;
+    }
+
+    var dados = extrairDadosMovimentacao(aba, linha);
+
+    // IDs e tabelas auxiliares
+    var siglaDestino = (dados.secretariaDestino || "").toUpperCase().trim();
+    var nomeSecretario = SECRETARIOS[siglaDestino] || "";
+    var SECRETARIAS_EXTENSO = {
+      "SECOM": "Secretaria Municipal de Comunicação",
+      "SEMEDES": "Secretaria Municipal de Emprego, Desenvolvimento, Ciência e Tecnologia",
+      "SEMOP": "Secretaria Municipal de Obras Privadas",
+      "SEMUTTRANS": "Secretaria Municipal de Transporte e Trânsito",
+      "SMA": "Secretaria Municipal de Administração",
+      "SMAFEL": "Secretaria Municipal de Esporte e Lazer",
+      "SMCC": "Secretaria Municipal da Casa Civil",
+      "SMCL": "Secretaria Municipal de Compras e Licitações",
+      "SMCT": "Secretaria Municipal de Cultura",
+      "SMDS": "Secretaria Municipal de Desenvolvimento Social",
+      "SME": "Secretaria Municipal de Educação",
+      "SMF": "Secretaria Municipal de Finanças",
+      "SMGAED": "Secretaria Municipal de Gestão, Assuntos Estratégicos e Desenvolvimento",
+      "SMH": "Secretaria Municipal de Habitação",
+      "SMMAP": "Secretaria Municipal de Meio Ambiente e Planejamento",
+      "SMMF": "Secretaria Municipal da Mulher e da Família",
+      "SMNJ": "Secretaria Municipal de Negócios Jurídicos",
+      "SMOP": "Secretaria Municipal de Obras Públicas",
+      "SMOU": "Secretaria Municipal de Operações Urbanas",
+      "SMS": "Secretaria Municipal de Saúde",
+      "SMSD": "Secretaria Municipal de Serviços Digitais",
+      "SMSM": "Secretaria Municipal de Serviços Municipais",
+      "SMSU": "Secretaria Municipal de Segurança Urbana"
+    };
+    var secretariaDestinoExtenso = SECRETARIAS_EXTENSO[siglaDestino] || siglaDestino;
+
+    // Pega a data da movimentação (coluna J)
+    var dataMov = dados.dataMovimentacao && dados.dataMovimentacao !== ""
+      ? Utilities.parseDate(dados.dataMovimentacao, "GMT-3", "dd/MM/yyyy")
+      : new Date();
+    var dataHoje = new Date();
+
+    var partesHoje = partesDataBR(new Date(Utilities.formatDate(dataHoje, "GMT-3", "yyyy/MM/dd")));
+    var dataMovFormatada = Utilities.formatDate(dataMov, "GMT-3", "dd/MM/yyyy");
+
+    // Número do memorando
+    var numeroMemo = "";
+    try {
+      numeroMemo = pegarProximoNumeroMemoEmPlanilha(PLANILHA_NUMERACAO_ENCAMINHAMENTO_ID);
+    } catch (e) {
+      numeroMemo = "BACKUP-" + Math.floor(Math.random() * 9000 + 1000);
+    }
+
+    // Preenchimento dos tokens
+    var tokensEnc = {
+      "\\[NUMERO\\]": numeroMemo,
+      "\\[DIA\\]": partesHoje.dia,
+      "\\[MES\\]": partesHoje.mes,
+      "\\[ANO\\]": partesHoje.ano,
+      "\\[PRONTUÁRIO\\]": dados.prontuario || "",
+      "\\[SECRETARIADESTINO\\]": secretariaDestinoExtenso,
+      "\\[SECRETARIO\\]": nomeSecretario,
+      "\\[NOME\\]": dados.nome || "",
+      "\\[CARGO\\]": dados.cargoEscolhido || "",
+      "\\[PROCESSO\\]": dados.processo || "",
+      "\\[DATAMOV\\]": dataMovFormatada // para usar no corpo do texto
+    };
+
+    var nomeArquivo = dados.nome + " - " + dados.prontuario + " - " + dados.cargoEscolhido + " - " + (dados.secretaria || "") + " x " + (siglaDestino || "") + " - PGE 2025";
+    var resultado = criarDocumentoPorTemplate(MODELO_ENCAMINHAMENTO_ID, nomeArquivo, PASTA_ENCAMINHAMENTO_ID, tokensEnc);
+
+    adicionarLinkControleMemos("encaminhamento", resultado.url, {
+      dataMovimentacao: dados.dataMovimentacao,
+      secretariaDestino: siglaDestino,
+      cargoEscolhido: dados.cargoEscolhido,
+      processo: dados.processo
+    });
+
+    abrirDocumento(resultado.url);
+    SpreadsheetApp.getUi().alert("Encaminhamento gerado com sucesso!");
+  } catch (erro) {
+    SpreadsheetApp.getUi().alert("Erro ao gerar Encaminhamento: " + erro.toString());
   }
 }
