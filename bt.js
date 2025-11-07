@@ -86,7 +86,7 @@ var EMAILS_SECRETARIOS = {
     "SEMUTTRANS": "moises.32666@santanadeparnaiba.sp.gov.br",
     "SMA": "jose.45849@santanadeparnaiba.sp.gov.br",
     "SMAFEL": "ricardo.29338@santanadeparnaiba.sp.gov.br",
-    "SMCC": "helio.37195@santanadeparnaiba.sp.gov.br",
+    "SMCC": "helio.37195@ .sp.gov.br",
     "SMCL": "cleusa.27102@santanadeparnaiba.sp.gov.br",
     "SMCT": "valmir.37361@santanadeparnaiba.sp.gov.br",
     "SMDS": "marcos.45852@santanadeparnaiba.sp.gov.br",
@@ -107,59 +107,84 @@ var EMAILS_SECRETARIOS = {
 
 // E-mails dos pontos focais
 var EMAILS_PONTOS_FOCAIS = {
-    "ARAT": ["ana.44313@santanadeparnaiba.sp.gov.br"],
-    "DEFESA CIVIL": ["carolina.38338@santanadeparnaiba.sp.gov.br"],
+    "ARAT": ["ana.44313@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
+    "DEFESA CIVIL": ["carolina.38338@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
     "SECOM": [
       "rosangela.20158@santanadeparnaiba.sp.gov.br",
-      "willian.35778@santanadeparnaiba.sp.gov.br"
+      "willian.35778@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"
     ],
     "SEMEDES": [
       "mauriceia.13547@santanadeparnaiba.sp.gov.br",
-      "libian.34565@santanadeparnaiba.sp.gov.br"
+      "libian.34565@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"
     ],
-    "SEMOP (PRIVADA)": ["vitoria.40868@santanadeparnaiba.sp.gov.br"],
-    "SEMUTTRANS": ["jailton.34100@santanadeparnaiba.sp.gov.br"],
+    "SEMOP (PRIVADA)": ["vitoria.40868@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
+    "SEMUTTRANS": ["jailton.34100@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
     "SMA": [
       "rubens.26653@santanadeparnaiba.sp.gov.br",
-      "vitoria.44738@santanadeparnaiba.sp.gov.br"
+      "vitoria.44738@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"
     ],
-    "SMAFEL": ["diego.35011@santanadeparnaiba.sp.gov.br"],
-    "SMCC": ["izabel.30143@santanadeparnaiba.sp.gov.br"],
+    "SMAFEL": ["diego.35011@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
+    "SMCC": ["izabel.30143@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
     "SMCL": [
       "andre.26547@santanadeparnaiba.sp.gov.br",
       "camila.42179@santanadeparnaiba.sp.gov.br",
-      "cintia.09595@santanadeparnaiba.sp.gov.br"
+      "cintia.09595@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"
     ],
-    "SMCT": ["sandra.45791@santanadeparnaiba.sp.gov.br"],
+    "SMCT": ["sandra.45791@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
     "SMDS": [
       "maria.10508@santanadeparnaiba.sp.gov.br",
-      "bruna.31191@santanadeparnaiba.sp.gov.br"
+      "bruna.31191@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"
     ],
-    "SME": ["tania.03067@edu.santanadeparnaiba.sp.gov.br"],
+    "SME": ["tania.03067@edu.santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
     "SMF": [
       "elza.40028@santanadeparnaiba.sp.gov.br",
-      "olga.28375@santanadeparnaiba.sp.gov.br"
+      "olga.28375@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"
     ],
-    "SMGAED": ["pedro.41937@santanadeparnaiba.sp.gov.br"],
-    "SMH": ["angela.29303@santanadeparnaiba.sp.gov.br"],
-    "SMMAP": ["juliana.35797@santanadeparnaiba.sp.gov.br"],
-    "SMMF": ["mariana.37113@santanadeparnaiba.sp.gov.br"],
-    "SMNJ": ["albaneide.32343@santanadeparnaiba.sp.gov.br"],
-    "SMOP (PÚBLICA)": ["gerlaine.40923@santanadeparnaiba.sp.gov.br"],
+    "SMGAED": ["pedro.41937@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
+    "SMH": ["angela.29303@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
+    "SMMAP": ["juliana.35797@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
+    "SMMF": ["mariana.37113@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
+    "SMNJ": ["albaneide.32343@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
+    "SMOP (PÚBLICA)": ["gerlaine.40923@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
     "SMOU": [
       "simone.43610@santanadeparnaiba.sp.gov.br",
-      "raquel.41575@santanadeparnaiba.sp.gov.br"
+      "raquel.41575@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"
     ],
     "SMS": [
       "carla.23199@santanadeparnaiba.sp.gov.br",
       "viviane.26822@santanadeparnaiba.sp.gov.br",
-      "vera.27405@santanadeparnaiba.sp.gov.br"
+      "vera.27405@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"
     ],
-    "SMSD (TI)": ["felipe.42463@santanadeparnaiba.sp.gov.br"],
-    "SMSM": ["william.14340@santanadeparnaiba.sp.gov.br"],
-    "SMSU": ["ana.39251@santanadeparnaiba.sp.gov.br"]
+    "SMSD (TI)": ["felipe.42463@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
+    "SMSM": ["william.14340@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"],
+    "SMSU": ["ana.39251@santanadeparnaiba.sp.gov.br",
+      "sma.programagovernoeficaz@santanadeparnaiba.sp.gov.br"]
 };
-
 // ========================================================================
 // MENU PRINCIPAL
 // ========================================================================
